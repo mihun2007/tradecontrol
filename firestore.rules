@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function subscriptionFields() {
+      return [
+        "currentPeriodEnd",
+        "isProUser",
+        "stripeCustomerId",
+        "stripeSubscriptionId",
+        "subscriptionPlan",
+        "subscriptionStatus"
+      ];
+    }
+
+    function doesNotChangeSubscriptionFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(subscriptionFields());
+    }
+
+    function doesNotCreateSubscriptionFields() {
+      return !request.resource.data.keys().hasAny(subscriptionFields());
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && doesNotCreateSubscriptionFields();
+      allow update: if isOwner(userId) && doesNotChangeSubscriptionFields();
+      allow delete: if false;
+
+      match /trades/{tradeId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /dailyReviews/{reviewId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /aiUsage/{usageDate} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+
+      match /aiConversations/{conversationId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+
+        match /messages/{messageId} {
+          allow read: if isOwner(userId);
+          allow write: if false;
+        }
+      }
+
+      match /reports/{reportId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(["month", "year", "generatedAt", "summary", "downloadUrl"])
+          && request.resource.data.month is int
+          && request.resource.data.year is int
+          && request.resource.data.summary is map;
+        allow update: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(["userId", "type", "title", "message", "read", "createdAt"])
+        && request.resource.data.type in ["info", "success", "warning", "danger"]
+        && request.resource.data.read == false;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"])
+        && request.resource.data.read == true;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

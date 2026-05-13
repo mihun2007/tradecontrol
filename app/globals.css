@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 255 255 255;
+  --muted: 91 99 114;
+  --ink: 15 18 25;
+  --line: 226 232 240;
+  color-scheme: light;
+}
+
+.dark {
+  --surface: 18 20 25;
+  --muted: 157 164 178;
+  --ink: 245 247 250;
+  --line: 48 54 66;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background: rgb(245 247 250);
+  color: rgb(var(--ink));
+}
+
+.dark body {
+  background: rgb(6 8 12);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgb(23 162 105 / 0.22);
+}
+
+:focus-visible {
+  outline: 3px solid rgb(23 162 105 / 0.35);
+  outline-offset: 3px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  text-rendering: geometricPrecision;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.premium-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(23 162 105 / 0.45) transparent;
+}
+
+.premium-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(23 162 105 / 0.35);
+  border-radius: 999px;
+}
