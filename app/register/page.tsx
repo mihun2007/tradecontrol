@@ -1,5 +1,13 @@
 import { AuthShell } from "@/components/auth-shell";
 import { RegisterClient } from "@/components/register-client";
+import { pageMetadata } from "../seo";
+
+export const metadata = pageMetadata({
+  title: "Create Account",
+  description: "Create a TradeControl account to start tracking trades, risk, emotions, analytics, and expenses.",
+  path: "/register",
+  noIndex: true
+});
 
 export default function RegisterPage() {
   return (

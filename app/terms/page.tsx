@@ -1,5 +1,13 @@
 import Link from "next/link";
 import { FileText, Target } from "lucide-react";
+import { pageMetadata } from "../seo";
+
+export const metadata = pageMetadata({
+  title: "Terms of Service",
+  description:
+    "Review the TradeControl terms for account use, subscriptions, Pro plan limits, cancellations, and the no-financial-advice policy.",
+  path: "/terms"
+});
 
 const sections = [
   {
@@ -32,7 +40,7 @@ const sections = [
   },
   {
     title: "Contact placeholder",
-    body: "For questions about these starter terms, contact: support@tradecontrol.example. These terms are starter templates and should be reviewed by a qualified lawyer before production use."
+    body: "For questions about these terms, contact: support@tradecontrol.app. TradeControl may update these terms as the platform and subscription features evolve."
   }
 ];
 
@@ -71,7 +79,7 @@ function LegalHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">{eyebrow}</p>
           <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-            Starter legal template for TradeControl. Keep this page simple for users, and have a qualified lawyer review it before relying on it in production.
+            A clear overview of account responsibilities, subscriptions, platform limits, cancellations, and the boundaries of TradeControl as software.
           </p>
         </div>
       </div>

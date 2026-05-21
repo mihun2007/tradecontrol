@@ -1,5 +1,13 @@
 import Link from "next/link";
 import { FileText, ShieldCheck, Target } from "lucide-react";
+import { pageMetadata } from "../seo";
+
+export const metadata = pageMetadata({
+  title: "Privacy Policy",
+  description:
+    "Read how TradeControl handles account data, journal entries, trade records, screenshots, billing metadata, cookies, and user privacy rights.",
+  path: "/privacy"
+});
 
 const sections = [
   {
@@ -32,7 +40,7 @@ const sections = [
   },
   {
     title: "Contact placeholder",
-    body: "For privacy questions, contact: privacy@tradecontrol.example. This privacy policy is a starter template and should be reviewed by a qualified lawyer before production use."
+    body: "For privacy questions, contact: privacy@tradecontrol.app. TradeControl reviews privacy practices periodically as the platform evolves."
   }
 ];
 
@@ -55,7 +63,7 @@ export default function PrivacyPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Privacy Policy</p>
               <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">How TradeControl handles user data.</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-                Starter privacy template for TradeControl. It is written plainly for users and should be reviewed by a qualified lawyer before production use.
+                A plain-language overview of the information TradeControl needs to operate accounts, subscriptions, analytics, and trading journal workflows.
               </p>
             </div>
           </div>

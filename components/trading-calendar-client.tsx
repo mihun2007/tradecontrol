@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   LineChart,
+  Lock,
   Loader2,
   NotebookPen,
   Save,
@@ -21,10 +22,10 @@ import {
   TrendingDown,
   TrendingUp
 } from "lucide-react";
-import { LockedFeature } from "@/components/locked-feature";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useSubscription } from "@/components/subscription-provider";
 import { useAuth } from "@/components/auth-provider";
+import { useLanguage } from "@/components/language-provider";
 import { useUserDailyReviews } from "@/hooks/use-user-daily-reviews";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { trackApiFailure, trackEvent } from "@/lib/analytics";
@@ -73,6 +74,7 @@ const today = new Date().toISOString().slice(0, 10);
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function TradingCalendarClient() {
+  const { language } = useLanguage();
   const { isProUser } = useSubscription();
   const { currentUser } = useAuth();
   const { trades, loading: tradesLoading, error: tradesError } = useUserTrades();
@@ -169,7 +171,7 @@ export function TradingCalendarClient() {
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white/75">
           <CalendarDays className="h-4 w-4" />
-          {formatMonth(visibleMonth)}
+          {formatMonth(visibleMonth, language)}
         </div>
       </section>
 
@@ -192,81 +194,87 @@ export function TradingCalendarClient() {
         </section>
       ) : null}
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(390px,0.85fr)]">
-        <section className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
-          <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-sm font-medium text-muted">Monthly Trading Calendar</p>
-              <h2 className="mt-1 text-xl font-semibold text-ink">{formatMonth(visibleMonth)}</h2>
-            </div>
-            <div className="flex gap-2">
-              <button className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-3 text-sm font-semibold text-ink shadow-soft" type="button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </button>
-              <button className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-3 text-sm font-semibold text-ink shadow-soft" type="button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto premium-scrollbar pb-2">
-            <div className="min-w-[680px]">
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold uppercase tracking-[0.12em] text-muted">
-                {weekdayLabels.map((label) => (
-                  <span key={label}>{label}</span>
-                ))}
+      <section className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(380px,0.75fr)]">
+        <div className="space-y-4">
+          <section className="self-start rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-4 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-5">
+            <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-sm font-medium text-muted">Monthly Trading Calendar</p>
+                <h2 className="mt-1 text-xl font-semibold text-ink">{formatMonth(visibleMonth, language)}</h2>
               </div>
-              <div className="mt-3 grid grid-cols-7 gap-2">
-                {daysInMonth.map((date) => {
-              const key = toDateKey(date);
-              const summary = monthSummaries.get(key) ?? summarizeDay(key, trades);
-              const review = reviewsByDate.get(key);
-              const isSelected = selectedDate === key;
-              const isToday = key === today;
-              return (
-                <button
-                  key={key}
-                  className={`min-h-[112px] rounded-[1.35rem] border p-3 text-left transition hover:-translate-y-0.5 sm:min-h-[134px] ${dayClass(summary.state, isSelected, isToday, review)}`}
-                  type="button"
-                  onClick={() => setSelectedDate(key)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold text-ink">{date.getDate()}</span>
-                    <span className={`h-2.5 w-2.5 rounded-full ${dotClass(summary.state)}`} />
-                  </div>
-                  <p className={`mt-4 text-sm font-semibold ${summary.profitLoss > 0 ? "text-profit" : summary.profitLoss < 0 ? "text-loss" : "text-muted"}`}>
-                    {summary.tradeCount ? formatCurrency(summary.profitLoss) : "No trades"}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-muted">{summary.tradeCount} trades</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-bold ${statePillClass(summary.state)}`}>
-                      {stateLabel(summary.state)}
-                    </span>
-                    {review ? (
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold ${review.dailyRating === "Dangerous" ? "bg-loss/12 text-loss" : isDisciplineClean(review) ? "bg-profit/12 text-profit" : "bg-zinc-500/10 text-muted"}`}>
-                        <BookOpenCheck className="h-3 w-3" />
-                        {review.dailyRating === "Dangerous" ? "Danger" : isDisciplineClean(review) ? "Clean" : "Review"}
-                      </span>
-                    ) : null}
-                  </div>
+              <div className="flex gap-2">
+                <button className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-3 text-sm font-semibold text-ink shadow-soft" type="button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
                 </button>
-              );
-                })}
+                <button className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-3 text-sm font-semibold text-ink shadow-soft" type="button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
             </div>
-          </div>
-        </section>
 
-        <aside className="space-y-5">
-          <DailyReviewPanel
-            form={form}
+            <div className="overflow-x-auto premium-scrollbar pb-2">
+              <div className="min-w-[680px]">
+                <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+                  {weekdayLabels.map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-7 gap-2">
+                  {daysInMonth.map((date) => {
+                const key = toDateKey(date);
+                const summary = monthSummaries.get(key) ?? summarizeDay(key, trades);
+                const review = reviewsByDate.get(key);
+                const isSelected = selectedDate === key;
+                const isToday = key === today;
+                return (
+                  <button
+                    key={key}
+                    className={`min-h-[96px] rounded-[1.15rem] border p-2.5 text-left transition hover:-translate-y-0.5 sm:min-h-[108px] ${dayClass(summary.state, isSelected, isToday, review)}`}
+                    type="button"
+                    onClick={() => setSelectedDate(key)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-bold text-ink">{date.getDate()}</span>
+                      <span className={`h-2.5 w-2.5 rounded-full ${dotClass(summary.state)}`} />
+                    </div>
+                    <p className={`mt-3 text-xs font-semibold ${summary.profitLoss > 0 ? "text-profit" : summary.profitLoss < 0 ? "text-loss" : "text-muted"}`}>
+                      {summary.tradeCount ? formatCurrency(summary.profitLoss) : "No trades"}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-muted">{summary.tradeCount} trades</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-bold ${statePillClass(summary.state)}`}>
+                        {stateLabel(summary.state)}
+                      </span>
+                      {review ? (
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold ${review.dailyRating === "Dangerous" ? "bg-loss/12 text-loss" : isDisciplineClean(review) ? "bg-profit/12 text-profit" : "bg-zinc-500/10 text-muted"}`}>
+                          <BookOpenCheck className="h-3 w-3" />
+                          {review.dailyRating === "Dangerous" ? "Danger" : isDisciplineClean(review) ? "Clean" : "Review"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <CalendarInsightCard
             insight={insight}
             isProUser={isProUser}
+            onUpgrade={() => setPaywallOpen(true)}
+          />
+        </div>
+
+        <aside className="space-y-4">
+          <DailyReviewPanel
+            form={form}
+            language={language}
             loading={reviewsLoading}
             onChange={setForm}
-            onUpgrade={() => setPaywallOpen(true)}
             onSubmit={handleSaveReview}
             saving={saving}
             summary={selectedSummary}
@@ -280,22 +288,18 @@ export function TradingCalendarClient() {
 
 function DailyReviewPanel({
   form,
-  insight,
-  isProUser,
+  language,
   loading,
   onChange,
-  onUpgrade,
   onSubmit,
   savedReview,
   saving,
   summary
 }: {
   form: ReviewFormState;
-  insight: string;
-  isProUser: boolean;
+  language: string;
   loading: boolean;
   onChange: (form: ReviewFormState) => void;
-  onUpgrade: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   savedReview: DailyReview | null;
   saving: boolean;
@@ -303,25 +307,25 @@ function DailyReviewPanel({
 }) {
   return (
     <>
-      <section className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
+      <section className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-4 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-muted">Daily Review Panel</p>
-            <h2 className="mt-1 text-xl font-semibold text-ink">{formatReadableDate(summary.date)}</h2>
+            <h2 className="mt-1 text-xl font-semibold text-ink">{formatReadableDate(summary.date, language)}</h2>
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-bold ${savedReview?.dailyRating === "Dangerous" ? "bg-loss/12 text-loss" : statePillClass(summary.state)}`}>
             {savedReview ? savedReview.dailyRating : stateLabel(summary.state)}
           </span>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
           <ReviewStat label="Daily P/L" value={summary.tradeCount ? formatCurrency(summary.profitLoss) : "$0"} tone={summary.profitLoss > 0 ? "profit" : summary.profitLoss < 0 ? "loss" : "neutral"} />
           <ReviewStat label="Trades" value={String(summary.tradeCount)} />
           <ReviewStat label="Win rate" value={`${Math.round(summary.winRate)}%`} />
           <ReviewStat label="Rules followed" value={`${Math.round(summary.rulesFollowedPercent)}%`} tone={summary.rulesFollowedPercent < 70 ? "loss" : "profit"} />
         </div>
 
-        <div className="mt-5 rounded-[1.5rem] border border-line/60 bg-surface/[0.55] p-4">
+        <div className="mt-4 rounded-[1.35rem] border border-line/60 bg-surface/[0.55] p-3.5">
           <p className="text-xs font-medium text-muted">Emotion summary</p>
           <p className="mt-1 text-sm font-semibold text-ink">{summary.emotionSummary}</p>
           <p className="mt-3 text-xs font-medium text-muted">Instruments traded</p>
@@ -332,10 +336,10 @@ function DailyReviewPanel({
           </div>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-2.5">
           <p className="text-sm font-semibold text-ink">Trades for the day</p>
           {summary.trades.length ? summary.trades.map((trade) => (
-            <div key={trade.id} className="rounded-2xl border border-line/60 bg-surface/[0.55] p-4">
+            <div key={trade.id} className="rounded-2xl border border-line/60 bg-surface/[0.55] p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-ink">{trade.instrument} {trade.type}</p>
@@ -348,7 +352,7 @@ function DailyReviewPanel({
         </div>
       </section>
 
-      <form className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6" onSubmit={onSubmit}>
+      <form className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-4 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-5" onSubmit={onSubmit}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
             <NotebookPen className="h-5 w-5" />
@@ -361,7 +365,7 @@ function DailyReviewPanel({
 
         {loading ? <div className="mb-4 rounded-2xl border border-line/60 bg-surface/60 p-4 text-sm font-semibold text-muted">Loading saved review...</div> : null}
 
-        <div className="space-y-3">
+        <div className="grid gap-2.5">
           {[
             ["followedPlan", "I followed my trading plan"],
             ["respectedRisk", "I respected max risk"],
@@ -371,7 +375,7 @@ function DailyReviewPanel({
           ].map(([key, label]) => (
             <button
               key={key}
-              className="flex w-full items-center gap-3 rounded-2xl border border-line/60 bg-surface/[0.55] p-3 text-left"
+              className="flex w-full items-center gap-3 rounded-2xl border border-line/60 bg-surface/[0.55] p-2.5 text-left"
               type="button"
               onClick={() => onChange({ ...form, [key]: !form[key as keyof ReviewFormState] })}
             >
@@ -383,12 +387,12 @@ function DailyReviewPanel({
           ))}
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Select label="Emotional state" value={form.emotionalState} onChange={(value) => onChange({ ...form, emotionalState: value as EmotionalState })} options={emotionalStates} />
           <Select label="Daily rating" value={form.dailyRating} onChange={(value) => onChange({ ...form, dailyRating: value as DailyRating })} options={dailyRatings} />
         </div>
 
-        <div className="mt-5 grid gap-4">
+        <div className="mt-4 grid gap-3">
           <Input label="Main mistake" value={form.mainMistake} onChange={(value) => onChange({ ...form, mainMistake: value })} />
           <Input label="Best decision" value={form.bestDecision} onChange={(value) => onChange({ ...form, bestDecision: value })} />
           <Input label="Lesson learned" value={form.lessonLearned} onChange={(value) => onChange({ ...form, lessonLearned: value })} />
@@ -396,34 +400,63 @@ function DailyReviewPanel({
           <TextArea label="Notes" value={form.notes} onChange={(value) => onChange({ ...form, notes: value })} />
         </div>
 
-        <button className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-zinc-950" type="submit" disabled={saving}>
+        <button className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-zinc-950" type="submit" disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? "Saving..." : savedReview ? "Update Daily Review" : "Save Daily Review"}
         </button>
       </form>
 
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
-        {!isProUser ? (
-          <LockedFeature
-            description="Upgrade to Pro to unlock selected-day insights and discipline readouts."
-            title="Calendar insights are Pro"
-            onUpgrade={onUpgrade}
-          />
-        ) : null}
-        <div className={!isProUser ? "pointer-events-none select-none blur-[3px]" : ""}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
-            <Sparkles className="h-5 w-5 text-profit" />
+    </>
+  );
+}
+
+function CalendarInsightCard({
+  insight,
+  isProUser,
+  onUpgrade
+}: {
+  insight: string;
+  isProUser: boolean;
+  onUpgrade: () => void;
+}) {
+  if (!isProUser) {
+    return (
+      <section className="rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-zinc-950 shadow-premium">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white/[0.55]">Insights</p>
+              <h3 className="mt-1 text-xl font-semibold leading-tight">Calendar insights are Pro</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+                Upgrade to Pro to unlock selected-day insights and discipline readouts.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-white/[0.55]">Insights</p>
-            <h3 className="text-lg font-semibold">Selected day readout</h3>
-          </div>
-        </div>
-        <p className="mt-4 text-sm leading-6 text-white/70">{insight}</p>
+          <button className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5" type="button" onClick={onUpgrade}>
+            <Sparkles className="h-4 w-4" />
+            Upgrade
+          </button>
         </div>
       </section>
-    </>
+    );
+  }
+
+  return (
+    <section className="rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+          <Sparkles className="h-5 w-5 text-profit" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white/[0.55]">Insights</p>
+          <h3 className="text-lg font-semibold">Selected day readout</h3>
+        </div>
+      </div>
+      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">{insight}</p>
+    </section>
   );
 }
 
@@ -441,7 +474,7 @@ function SummaryCard({ icon: Icon, label, tone = "neutral", value }: { icon: Ele
 
 function ReviewStat({ label, tone = "neutral", value }: { label: string; tone?: "profit" | "loss" | "neutral"; value: string }) {
   return (
-    <div className="rounded-2xl border border-line/60 bg-surface/[0.55] p-4">
+    <div className="rounded-2xl border border-line/60 bg-surface/[0.55] p-3.5">
       <p className="text-xs font-medium text-muted">{label}</p>
       <p className={`mt-2 text-lg font-semibold ${toneClass(tone)}`}>{value}</p>
     </div>
@@ -452,7 +485,7 @@ function Input({ label, onChange, value }: { label: string; onChange: (value: st
   return (
     <label className="grid gap-2 text-sm font-semibold text-ink">
       {label}
-      <input className="h-11 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)} />
+      <input className="h-10 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -461,7 +494,7 @@ function Select({ label, onChange, options, value }: { label: string; onChange: 
   return (
     <label className="grid gap-2 text-sm font-semibold text-ink">
       {label}
-      <select className="h-11 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className="h-10 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => <option key={option}>{option}</option>)}
       </select>
     </label>
@@ -472,7 +505,7 @@ function TextArea({ label, onChange, value }: { label: string; onChange: (value:
   return (
     <label className="grid gap-2 text-sm font-semibold text-ink">
       {label}
-      <textarea className="min-h-24 resize-none rounded-2xl border border-line/70 bg-surface/70 px-4 py-3 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)} />
+      <textarea className="min-h-20 resize-none rounded-2xl border border-line/70 bg-surface/70 px-4 py-3 text-sm font-medium text-ink outline-none transition focus:border-profit/70 focus:ring-4 focus:ring-profit/10" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -649,17 +682,28 @@ function toneClass(tone: "profit" | "loss" | "warning" | "neutral") {
   return "text-ink";
 }
 
-function formatMonth(date: Date) {
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+function formatMonth(date: Date, language = "en") {
+  return date.toLocaleDateString(localeForLanguage(language), { month: "long", year: "numeric" });
 }
 
-function formatReadableDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+function formatReadableDate(date: string, language = "en") {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(localeForLanguage(language), {
     day: "numeric",
     month: "long",
     weekday: "long",
     year: "numeric"
   });
+}
+
+function localeForLanguage(language: string) {
+  if (language === "ru") return "ru-RU";
+  if (language === "ro") return "ro-RO";
+  if (language === "es") return "es-ES";
+  if (language === "fr") return "fr-FR";
+  if (language === "de") return "de-DE";
+  if (language === "it") return "it-IT";
+  if (language === "pt") return "pt-PT";
+  return "en-US";
 }
 
 function toDateKey(date: Date) {

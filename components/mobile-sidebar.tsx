@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { LineChart, X } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
 import { navItems } from "@/components/sidebar";
 
 export function MobileSidebar({
@@ -14,6 +15,7 @@ export function MobileSidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   useEffect(() => {
     onClose();
@@ -60,7 +62,7 @@ export function MobileSidebar({
             </div>
             <div className="min-w-0">
               <p className="truncate text-lg font-semibold text-ink">TradeControl</p>
-              <p className="truncate text-xs font-medium text-muted">Journal and risk desk</p>
+              <p className="truncate text-xs font-medium text-muted">{t("brand.subtitle")}</p>
             </div>
           </Link>
           <button
@@ -76,7 +78,7 @@ export function MobileSidebar({
         <nav className="mt-8 grid gap-1 overflow-y-auto pb-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const isActive = pathname.startsWith(item.href);
 
             return (
               <Link
@@ -89,16 +91,16 @@ export function MobileSidebar({
                 href={item.href}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             );
           })}
         </nav>
 
         <div className="mt-auto rounded-[1.5rem] border border-line/70 bg-surface/70 p-4 shadow-soft">
-          <p className="text-sm font-semibold text-ink">Mobile ready</p>
+          <p className="text-sm font-semibold text-ink">{t("sidebar.mobileReady")}</p>
           <p className="mt-2 text-xs leading-5 text-muted">
-            Navigation closes automatically when you change pages.
+            {t("sidebar.mobileReadyDetail")}
           </p>
         </div>
       </aside>

@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Brain,
   CheckCircle2,
+  Lock,
   MessageSquareText,
   Send,
   ShieldAlert,
@@ -24,7 +25,6 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useSubscription } from "@/components/subscription-provider";
-import { LockedFeature } from "@/components/locked-feature";
 import { trackApiFailure, trackEvent } from "@/lib/analytics";
 import {
   buildCoachAnalysis,
@@ -342,7 +342,7 @@ export function AiCoachClient() {
         <DailySummaryCard analysis={analysis} currency={profile?.accountCurrency} latestFocus={latestFocus} loading={loading} />
       </section>
 
-      <section className="relative">
+      <section className="grid gap-4">
         <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-medium text-muted">Weekly Coach Insights</p>
@@ -350,22 +350,43 @@ export function AiCoachClient() {
           </div>
           <span className="w-fit rounded-full border border-line/70 bg-surface/70 px-3 py-1 text-xs font-bold text-muted">Local Firestore analysis</span>
         </div>
-        <div className={`grid gap-4 md:grid-cols-2 xl:grid-cols-4 ${!isProUser ? "pointer-events-none select-none blur-[3px]" : ""}`}>
+        {!isProUser ? (
+          <CoachUpgradeBanner onUpgrade={() => setPaywallOpen(true)} />
+        ) : null}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {coachInsights.map((insight) => (
             <InsightCard key={insight.label} insight={insight} />
           ))}
         </div>
-        {!isProUser ? (
-          <LockedFeature
-            description="Free users get basic coaching and 3 messages per day. Pro unlocks advanced insight cards generated from trades, reviews, expenses, and settings."
-            title="Advanced Coach Insights are Pro"
-            onUpgrade={() => setPaywallOpen(true)}
-          />
-        ) : null}
       </section>
 
       <DisclaimerCard />
     </>
+  );
+}
+
+function CoachUpgradeBanner({ onUpgrade }: { onUpgrade: () => void }) {
+  return (
+    <section className="rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-zinc-950 shadow-premium">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white/[0.55]">Weekly Coach Insights</p>
+            <h3 className="mt-1 text-xl font-semibold leading-tight">Advanced Coach Insights are Pro</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+              Free users get basic coaching and 3 messages per day. Pro unlocks advanced insight cards generated from trades, reviews, expenses, and settings.
+            </p>
+          </div>
+        </div>
+        <button className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5" type="button" onClick={onUpgrade}>
+          <Sparkles className="h-4 w-4" />
+          Upgrade
+        </button>
+      </div>
+    </section>
   );
 }
 

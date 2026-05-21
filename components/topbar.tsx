@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "./auth-provider";
+import { useLanguage } from "./language-provider";
 import { NotificationCenter } from "./notification-center";
 import { useSubscription } from "./subscription-provider";
 import { ThemeToggle } from "./theme-toggle";
 
 export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => void }) {
   const { currentUser, logout } = useAuth();
+  const { t } = useLanguage();
   const { isProUser } = useSubscription();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const router = useRouter();
@@ -26,7 +28,7 @@ export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => voi
       <div className="mx-auto flex max-w-[1540px] items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <button
-            aria-label="Open menu"
+            aria-label={t("topbar.openMenu")}
             className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-line/70 bg-surface/70 text-ink shadow-soft transition hover:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-profit/20 lg:hidden"
             type="button"
             onClick={onOpenMobileSidebar}
@@ -34,9 +36,9 @@ export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => voi
             <Menu className="h-4 w-4" />
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-muted">Good morning, Mihun</p>
+            <p className="truncate text-sm font-medium text-muted">{t("topbar.goodMorning")}, Mihun</p>
             <h2 className="truncate text-xl font-semibold tracking-normal text-ink sm:text-2xl">
-              Trading Dashboard
+              {t("topbar.tradingDashboard")}
             </h2>
           </div>
         </div>
@@ -51,10 +53,10 @@ export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => voi
             href="/pricing"
           >
             <Crown className="h-4 w-4" />
-            {isProUser ? "Pro Plan" : "Free Plan"}
+            {isProUser ? t("topbar.proPlan") : t("topbar.freePlan")}
           </Link>
           <button
-            aria-label="Search"
+            aria-label={t("topbar.search")}
             className="hidden h-10 w-10 items-center justify-center rounded-2xl border border-line/70 bg-surface/70 text-ink shadow-soft backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-profit/20 sm:inline-flex"
             type="button"
           >
@@ -67,11 +69,11 @@ export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => voi
             href="/trades/new"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Trade</span>
+            <span className="hidden sm:inline">{t("topbar.addTrade")}</span>
           </Link>
           <div className="relative">
             <button
-              aria-label="Open profile menu"
+              aria-label={t("topbar.openProfileMenu")}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/50 bg-[linear-gradient(135deg,#111827,#6b7280)] text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-profit/20 dark:border-white/10"
               type="button"
               onClick={() => setIsProfileOpen((current) => !current)}
@@ -89,7 +91,7 @@ export function Topbar({ onOpenMobileSidebar }: { onOpenMobileSidebar: () => voi
                   type="button"
                   onClick={handleLogout}
                 >
-                  Sign Out
+                  {t("topbar.signOut")}
                 </button>
               </div>
             ) : null}

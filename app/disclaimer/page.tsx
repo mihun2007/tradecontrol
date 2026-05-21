@@ -1,5 +1,13 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Target } from "lucide-react";
+import { pageMetadata } from "../seo";
+
+export const metadata = pageMetadata({
+  title: "Trading Risk Disclaimer",
+  description:
+    "TradeControl is trading journal and analytics software. It does not provide financial advice, trading signals, investment advice, or performance guarantees.",
+  path: "/disclaimer"
+});
 
 const points = [
   "TradeControl is a journaling, analytics, and discipline tool.",
@@ -29,7 +37,7 @@ export default function DisclaimerPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-200">Trading Risk Disclaimer</p>
               <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">TradeControl is not financial advice.</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-                This is a clear starter disclaimer for users. It should be reviewed by a qualified lawyer before production use.
+                TradeControl helps traders organize and review their own process. It does not replace independent judgment, licensed advice, or personal risk management.
               </p>
             </div>
           </div>

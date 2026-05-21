@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useSubscription } from "@/components/subscription-provider";
 import { useUserProfile } from "@/components/user-profile-provider";
 import { trackApiFailure, trackEvent } from "@/lib/analytics";
+import { hasCompletedOnboardingForSession, markOnboardingCompletedForSession } from "@/lib/onboarding-state";
 import { defaultUserProfile, updateUserProfile, type UserProfileInput } from "@/lib/user-profile";
 
 const steps = [
@@ -66,7 +67,7 @@ function toFormState(profile?: Partial<UserProfileInput> | null): WizardForm {
 
 export function OnboardingClient() {
   const { currentUser, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading } = useUserProfile();
+  const { profile, loading: profileLoading, refresh } = useUserProfile();
   const { isProUser, plan } = useSubscription();
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -82,7 +83,7 @@ export function OnboardingClient() {
   }, [authLoading, currentUser, router]);
 
   useEffect(() => {
-    if (!authLoading && !profileLoading && profile?.onboardingCompleted) {
+    if (!authLoading && !profileLoading && (profile?.onboardingCompleted || hasCompletedOnboardingForSession())) {
       router.replace("/dashboard");
     }
   }, [authLoading, profile?.onboardingCompleted, profileLoading, router]);
@@ -211,6 +212,8 @@ export function OnboardingClient() {
         trading_experience: form.tradingExperience
       });
       void sendWelcomeEmail(currentUser);
+      markOnboardingCompletedForSession();
+      await refresh();
       router.replace("/dashboard");
     } catch (saveError) {
       trackApiFailure("onboarding_completed", saveError);

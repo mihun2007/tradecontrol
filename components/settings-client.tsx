@@ -10,6 +10,7 @@ import {
   Database,
   Download,
   FileText,
+  Globe2,
   Moon,
   Save,
   Settings,
@@ -23,10 +24,12 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { useLanguage } from "@/components/language-provider";
 import { useSubscription } from "@/components/subscription-provider";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { trackApiFailure, trackEvent } from "@/lib/analytics";
+import { defaultLanguage, languageOptions, type AppLanguage } from "@/lib/languages";
 import { riskSettingsStorageKey } from "@/lib/risk";
 import { createUserProfile, updateUserProfile, type UserProfile, type UserProfileInput } from "@/lib/user-profile";
 import { tradeStorageKey } from "@/lib/trades";
@@ -55,6 +58,7 @@ type SettingsForm = {
   defaultLotSize: string;
   notifications: Record<NotificationKey, boolean>;
   appearance: "light" | "dark" | "system";
+  preferredLanguage: AppLanguage;
 };
 
 type NotificationKey =
@@ -97,7 +101,8 @@ const defaultSettings: SettingsForm = {
     ruleViolationAlerts: true,
     emailNotificationsEnabled: true
   },
-  appearance: "system"
+  appearance: "system",
+  preferredLanguage: defaultLanguage
 };
 
 const inputClass =
@@ -108,6 +113,17 @@ const selectClass =
 
 const instruments = ["XAUUSD", "EURUSD", "GBPUSD", "NAS100", "US30", "BTCUSD", "GBPJPY", "USOIL"];
 const strategies = ["Break and Retest", "Liquidity Sweep", "Order Block", "Fair Value Gap", "Trend Continuation", "Opening Range"];
+
+const russianLanguageOptionLabels: Record<AppLanguage, string> = {
+  en: "Английский - Английский",
+  ro: "Румынский - Румынский",
+  ru: "Русский - Русский",
+  es: "Испанский - Испанский",
+  fr: "Французский - Французский",
+  de: "Немецкий - Немецкий",
+  it: "Итальянский - Итальянский",
+  pt: "Португальский - Португальский"
+};
 
 const notificationLabels: { key: NotificationKey; label: string; detail: string }[] = [
   { key: "emailNotificationsEnabled", label: "Email notifications enabled", detail: "Master switch for transactional reminders and lifecycle emails." },
@@ -120,6 +136,7 @@ const notificationLabels: { key: NotificationKey; label: string; detail: string 
 
 export function SettingsClient() {
   const { currentUser } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const { isProUser, openCustomerPortal, startCheckout, subscriptionStatus } = useSubscription();
   const { profile, loading, error: profileError, isUsingDefaults, refresh } = useUserProfile();
   const { trades } = useUserTrades();
@@ -134,12 +151,12 @@ export function SettingsClient() {
     const storedTheme = window.localStorage.getItem("tradecontrol-theme") as SettingsForm["appearance"] | null;
 
     if (profile) {
-      setForm({ ...formFromProfile(profile), appearance: storedTheme ?? "system" });
+      setForm({ ...formFromProfile(profile), appearance: storedTheme ?? "system", preferredLanguage: profile.preferredLanguage ?? language });
       return;
     }
 
-    setForm((current) => ({ ...current, appearance: storedTheme ?? "system" }));
-  }, [profile]);
+    setForm((current) => ({ ...current, appearance: storedTheme ?? "system", preferredLanguage: language }));
+  }, [language, profile]);
 
   useEffect(() => {
     if (!notice) {
@@ -165,6 +182,12 @@ export function SettingsClient() {
     update("appearance", appearance);
     applyTheme(appearance);
     setNotice(`${appearanceLabel(appearance)} theme applied.`);
+  }
+
+  function updateLanguage(languageCode: AppLanguage) {
+    update("preferredLanguage", languageCode);
+    setLanguage(languageCode);
+    setNotice(t("settings.language.applied"));
   }
 
   async function saveSettings(event?: FormEvent<HTMLFormElement>) {
@@ -481,6 +504,20 @@ export function SettingsClient() {
             <p className="mt-4 text-sm leading-6 text-muted">Saved appearance uses the same local theme key as the topbar toggle.</p>
           </Card>
 
+          <Card eyebrow={t("settings.language.eyebrow")} title={t("settings.language.title")} icon={Globe2}>
+            <p className="mb-4 text-sm leading-6 text-muted">{t("settings.language.description")}</p>
+            <Field label={t("settings.language.field")}>
+              <select className={selectClass} value={form.preferredLanguage} onChange={(event) => updateLanguage(event.target.value as AppLanguage)}>
+                {languageOptions.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {language === "ru" ? russianLanguageOptionLabels[item.code] : `${item.label} - ${item.nativeName}`}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <p className="mt-4 text-sm leading-6 text-muted">{t("settings.language.note")}</p>
+          </Card>
+
           <Card eyebrow="Data Settings" title="Exports and local placeholders" icon={Database}>
             <div className="grid gap-3 sm:grid-cols-3">
               <button className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-semibold text-ink transition hover:-translate-y-0.5" type="button" onClick={exportTradesCsv}>
@@ -648,7 +685,8 @@ function formFromProfile(profile: UserProfile): SettingsForm {
     defaultRiskPercent: String(profile.defaultRisk),
     defaultLotSize: profile.defaultLotSize ? String(profile.defaultLotSize) : "",
     notifications: profile.notificationSettings,
-    appearance: "system"
+    appearance: "system",
+    preferredLanguage: profile.preferredLanguage
   };
 }
 
@@ -678,7 +716,8 @@ function profileInputFromForm(form: SettingsForm): UserProfileInput {
     defaultLotSize: form.defaultLotSize ? safeNumber(form.defaultLotSize, 0) : null,
     defaultEmotion: "Calm",
     notifications: form.notifications,
-    notificationSettings: form.notifications
+    notificationSettings: form.notifications,
+    preferredLanguage: form.preferredLanguage
   };
 }
 

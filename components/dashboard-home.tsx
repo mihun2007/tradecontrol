@@ -52,8 +52,8 @@ export function DashboardHome() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,0.85fr)]">
-        <ChartCard />
-        <MonthlyProgress />
+        <ChartCard currency={profile?.accountCurrency ?? "USD"} loading={loading} trades={trades} />
+        <MonthlyProgress profile={profile} trades={trades} />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(320px,0.75fr)_minmax(0,1.25fr)]">

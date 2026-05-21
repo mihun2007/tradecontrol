@@ -16,25 +16,27 @@ import {
   WalletCards
 } from "lucide-react";
 import { useMemo } from "react";
+import { useLanguage } from "@/components/language-provider";
 import { useUserProfile } from "@/components/user-profile-provider";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { calculateDailyRiskStatus, riskSettingsFromProfile, type RiskLevel } from "@/lib/risk";
 
 export const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Calendar", icon: CalendarDays, href: "/calendar" },
-  { label: "Trades", icon: WalletCards, href: "/trades" },
-  { label: "Analytics", icon: BarChart3, href: "/analytics" },
-  { label: "Risk Manager", icon: ShieldCheck, href: "/risk-manager" },
-  { label: "Expenses", icon: CreditCard, href: "/expenses" },
-  { label: "AI Coach", icon: Bot, href: "/ai-coach" },
-  { label: "Reports", icon: FileText, href: "/reports" },
-  { label: "Pricing", icon: Crown, href: "/pricing" },
-  { label: "Settings", icon: Settings, href: "/settings" }
-];
+  { label: "Dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Calendar", labelKey: "nav.calendar", icon: CalendarDays, href: "/calendar" },
+  { label: "Trades", labelKey: "nav.trades", icon: WalletCards, href: "/trades" },
+  { label: "Analytics", labelKey: "nav.analytics", icon: BarChart3, href: "/analytics" },
+  { label: "Risk Manager", labelKey: "nav.riskManager", icon: ShieldCheck, href: "/risk-manager" },
+  { label: "Expenses", labelKey: "nav.expenses", icon: CreditCard, href: "/expenses" },
+  { label: "AI Coach", labelKey: "nav.aiCoach", icon: Bot, href: "/ai-coach" },
+  { label: "Reports", labelKey: "nav.reports", icon: FileText, href: "/reports" },
+  { label: "Pricing", labelKey: "nav.pricing", icon: Crown, href: "/pricing" },
+  { label: "Settings", labelKey: "nav.settings", icon: Settings, href: "/settings" }
+] as const;
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const { profile, loading: profileLoading } = useUserProfile();
   const { trades, loading: tradesLoading } = useUserTrades();
   const isLoading = profileLoading || tradesLoading;
@@ -56,14 +58,14 @@ export function Sidebar() {
         </div>
         <div>
           <p className="text-lg font-semibold text-ink">TradeControl</p>
-          <p className="text-xs font-medium text-muted">Journal and risk desk</p>
+          <p className="text-xs font-medium text-muted">{t("brand.subtitle")}</p>
         </div>
       </div>
 
       <nav className="mt-9 flex flex-1 flex-col gap-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.label}
@@ -75,7 +77,7 @@ export function Sidebar() {
               href={item.href}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -83,9 +85,9 @@ export function Sidebar() {
 
       <div className={`rounded-[1.5rem] border p-4 shadow-soft ${tone.card}`}>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-ink">Risk status</p>
+          <p className="text-sm font-semibold text-ink">{t("sidebar.riskStatus")}</p>
           <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.1em] ${tone.badge}`}>
-            {isLoading ? "Syncing" : riskStatus.level}
+            {isLoading ? t("common.syncing") : riskStatus.level}
           </span>
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10" aria-label={`Daily risk usage ${progress}%`}>

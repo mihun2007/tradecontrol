@@ -1,5 +1,6 @@
 import { doc, getDoc, serverTimestamp, setDoc, type DocumentData, type FieldValue } from "firebase/firestore";
 import { requireFirestoreDb } from "@/lib/firebase";
+import { defaultLanguage, isAppLanguage, type AppLanguage } from "@/lib/languages";
 import type { Emotion, SetupQuality, TradeSession } from "@/lib/trades";
 
 export type NotificationSettings = {
@@ -50,6 +51,7 @@ export type UserProfile = AccountSettings &
     defaultEmotion: Emotion;
     notifications: NotificationSettings;
     notificationSettings: NotificationSettings;
+    preferredLanguage: AppLanguage;
     createdAt?: string;
     updatedAt?: string;
   };
@@ -59,12 +61,15 @@ export type UserProfileInput = Omit<
   | "createdAt"
   | "currentPeriodEnd"
   | "isProUser"
+  | "preferredLanguage"
   | "stripeCustomerId"
   | "stripeSubscriptionId"
   | "subscriptionPlan"
   | "subscriptionStatus"
   | "updatedAt"
->;
+> & {
+  preferredLanguage?: AppLanguage;
+};
 
 const defaultSubscriptionFields = {
   currentPeriodEnd: undefined,
@@ -119,7 +124,8 @@ export const defaultUserProfile: UserProfileInput = {
   defaultLotSize: null,
   defaultEmotion: "Calm",
   notifications: defaultNotifications,
-  notificationSettings: defaultNotifications
+  notificationSettings: defaultNotifications,
+  preferredLanguage: defaultLanguage
 };
 
 function userDoc(userId: string) {
@@ -192,6 +198,7 @@ export function normalizeUserProfile(data: DocumentData): UserProfile {
     defaultEmotion: stringOrDefault(data.defaultEmotion, defaultUserProfile.defaultEmotion),
     notifications: notificationSettings,
     notificationSettings,
+    preferredLanguage: isAppLanguage(data.preferredLanguage) ? data.preferredLanguage : defaultLanguage,
     createdAt: serializeTimestamp(data.createdAt),
     updatedAt: serializeTimestamp(data.updatedAt)
   };
@@ -211,7 +218,8 @@ export function profileDefaultsForUser(input: {
     accountType: stringOrDefault(input.accountType, defaultUserProfile.accountType),
     tradingExperience: stringOrDefault(input.tradingExperience, defaultUserProfile.tradingExperience),
     notifications: { ...defaultNotifications },
-    notificationSettings: { ...defaultNotifications }
+    notificationSettings: { ...defaultNotifications },
+    preferredLanguage: defaultLanguage
   };
 }
 

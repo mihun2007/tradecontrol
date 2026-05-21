@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { LineChart } from "lucide-react";
 import { useAuth } from "./auth-provider";
 import { useUserProfile } from "./user-profile-provider";
+import { hasCompletedOnboardingForSession } from "@/lib/onboarding-state";
 
 export function AuthShell({
   children,
@@ -24,7 +25,7 @@ export function AuthShell({
 
   useEffect(() => {
     if (!loading && !profileLoading && currentUser) {
-      router.replace(profile?.onboardingCompleted ? "/dashboard" : "/onboarding");
+      router.replace(profile?.onboardingCompleted || hasCompletedOnboardingForSession() ? "/dashboard" : "/onboarding");
     }
   }, [currentUser, loading, profile?.onboardingCompleted, profileLoading, router]);
 

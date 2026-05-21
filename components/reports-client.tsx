@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, Lock, RefreshCcw, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
-import { LockedFeature } from "@/components/locked-feature";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useAuth } from "@/components/auth-provider";
 import { useSubscription } from "@/components/subscription-provider";
@@ -222,17 +221,15 @@ export function ReportsClient() {
       </section>
 
       {!isProUser ? (
-        <section className="relative">
-          <div className="grid gap-4 opacity-40 md:grid-cols-3">
+        <section className="grid gap-4">
+          <ReportsUpgradeBanner
+            onUpgrade={() => setPaywallOpen(true)}
+          />
+          <div className="grid gap-4 md:grid-cols-3">
             <ProSection title="Advanced sections" detail="Best/worst behavior, emotional patterns, and AI Coach summary placeholders." />
             <ProSection title="PDF export" detail="Download a polished monthly PDF report for accountability and review." />
             <ProSection title="Report history" detail="Track generated reports in Firestore under your user account." />
           </div>
-          <LockedFeature
-            description="CSV export stays free on the Trades page. PDF reports and advanced report sections are available for Pro users."
-            title="PDF reports are Pro"
-            onUpgrade={() => setPaywallOpen(true)}
-          />
         </section>
       ) : null}
 
@@ -245,6 +242,31 @@ export function ReportsClient() {
         </div>
       </section>
     </>
+  );
+}
+
+function ReportsUpgradeBanner({ onUpgrade }: { onUpgrade: () => void }) {
+  return (
+    <section className="rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-zinc-950 shadow-premium">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white/[0.55]">PDF export</p>
+            <h3 className="mt-1 text-xl font-semibold leading-tight">PDF reports are Pro</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+              CSV export stays free on the Trades page. PDF reports and advanced report sections are available for Pro users.
+            </p>
+          </div>
+        </div>
+        <button className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5" type="button" onClick={onUpgrade}>
+          <Sparkles className="h-4 w-4" />
+          Upgrade
+        </button>
+      </div>
+    </section>
   );
 }
 
