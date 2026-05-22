@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Brain,
   CheckCircle2,
+  Info,
   Lock,
   MessageSquareText,
   Send,
@@ -30,6 +31,7 @@ import {
   buildCoachAnalysis,
   type CoachAnalysis
 } from "@/lib/coach-analysis";
+import { detectTradePatterns, type DetectedPattern } from "@/lib/trade-patterns";
 import { formatCurrency } from "@/lib/trades";
 
 type ChatMessage = {
@@ -83,7 +85,7 @@ export function AiCoachClient() {
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
   const [activeConversationId, setActiveConversationId] = useState("");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [dailyLimit, setDailyLimit] = useState(isProUser ? 100 : 3);
+  const [dailyLimit, setDailyLimit] = useState(isProUser ? 100 : 10);
   const [dailyUsage, setDailyUsage] = useState(0);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -106,6 +108,10 @@ export function AiCoachClient() {
   }, [messages]);
 
   const coachInsights = useMemo(() => buildCoachInsights(analysis, profile?.accountCurrency), [analysis, profile?.accountCurrency]);
+  const detectedPatterns = useMemo(
+    () => detectTradePatterns(trades, profile?.accountCurrency),
+    [profile?.accountCurrency, trades]
+  );
 
   useEffect(() => {
     void loadConversations();
@@ -138,7 +144,7 @@ export function AiCoachClient() {
       const payload = await response.json() as { conversations?: ConversationSummary[]; dailyLimit?: number; dailyUsage?: number };
       if (response.ok) {
         setConversations(payload.conversations ?? []);
-        setDailyLimit(payload.dailyLimit ?? (isProUser ? 100 : 3));
+        setDailyLimit(payload.dailyLimit ?? (isProUser ? 100 : 10));
         setDailyUsage(payload.dailyUsage ?? 0);
       }
     } catch {
@@ -279,7 +285,7 @@ export function AiCoachClient() {
   return (
     <>
       <PaywallModal
-        description="Free users get 3 AI Coach messages per day. Upgrade to Pro for unlimited local coaching and advanced insights."
+        description="Free users get 10 AI Coach messages per day. Upgrade to Pro for unlimited local coaching and advanced insights."
         lockedFeature="AI Coach daily limit reached"
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
@@ -348,7 +354,6 @@ export function AiCoachClient() {
             <p className="text-sm font-medium text-muted">Weekly Coach Insights</p>
             <h2 className="text-xl font-semibold text-ink">Patterns worth respecting</h2>
           </div>
-          <span className="w-fit rounded-full border border-line/70 bg-surface/70 px-3 py-1 text-xs font-bold text-muted">Local Firestore analysis</span>
         </div>
         {!isProUser ? (
           <CoachUpgradeBanner onUpgrade={() => setPaywallOpen(true)} />
@@ -359,6 +364,14 @@ export function AiCoachClient() {
           ))}
         </div>
       </section>
+
+      <DetectedPatternsSection
+        isProUser={isProUser}
+        loading={loading}
+        onUpgrade={() => setPaywallOpen(true)}
+        patterns={detectedPatterns}
+        tradeCount={trades.length}
+      />
 
       <DisclaimerCard />
     </>
@@ -377,7 +390,7 @@ function CoachUpgradeBanner({ onUpgrade }: { onUpgrade: () => void }) {
             <p className="text-sm font-medium text-white/[0.55]">Weekly Coach Insights</p>
             <h3 className="mt-1 text-xl font-semibold leading-tight">Advanced Coach Insights are Pro</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-              Free users get basic coaching and 3 messages per day. Pro unlocks advanced insight cards generated from trades, reviews, expenses, and settings.
+              Free users get basic coaching and 10 messages per day. Pro unlocks advanced insight cards generated from trades, reviews, expenses, and settings.
             </p>
           </div>
         </div>
@@ -446,7 +459,7 @@ function ChatInterface({
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-profit/20 bg-profit/[0.08] px-3 py-1 text-xs font-bold text-profit">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          {isProUser ? "Pro AI access" : `${remainingMessages}/3 free messages left`}
+          {isProUser ? "Pro AI access" : `${remainingMessages}/${dailyLimit} free messages left`}
         </div>
       </div>
 
@@ -516,7 +529,7 @@ function ChatInterface({
 
       {limitReached ? (
         <div className="mt-4 rounded-[1.25rem] border border-amber-400/30 bg-amber-400/[0.08] px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-200">
-          You used today&apos;s 3 free AI Coach messages. Upgrade to Pro for deeper analysis and more coaching.
+          You used today&apos;s 10 free AI Coach messages. Upgrade to Pro for deeper analysis and more coaching.
         </div>
       ) : null}
 
@@ -624,7 +637,7 @@ function DailySummaryCard({
       label: "Emotional Control",
       value: loading ? "..." : analysis.weakestEmotion,
       detail: analysis.recentReview ? `Latest review: ${analysis.recentReview.date}` : "Add daily reviews to sharpen emotion coaching",
-      tone: ["Revenge", "FOMO", "Greed", "Fear"].includes(analysis.weakestEmotion) ? "warning" as const : "neutral" as const,
+      tone: ["Revenge", "FOMO", "Greed", "Fear", "Anxious"].includes(analysis.weakestEmotion) ? "warning" as const : "neutral" as const,
       icon: Brain
     },
     {
@@ -690,6 +703,133 @@ function InsightCard({ insight }: { insight: Insight }) {
   );
 }
 
+function DetectedPatternsSection({
+  isProUser,
+  loading,
+  onUpgrade,
+  patterns,
+  tradeCount
+}: {
+  isProUser: boolean;
+  loading: boolean;
+  onUpgrade: () => void;
+  patterns: DetectedPattern[];
+  tradeCount: number;
+}) {
+  const showMinimumDataMessage = !loading && tradeCount < 10;
+  const showNoPatternMessage = !loading && tradeCount >= 10 && !patterns.length;
+  const displayPatterns = !isProUser ? getPatternPreviewCards() : patterns.length ? patterns : getPatternPreviewCards();
+
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
+      <div className={isProUser ? "" : "pointer-events-none select-none blur-[3px]"}>
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-sm font-medium text-muted">Detected Patterns</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">Automatic journal pattern detection</h2>
+          </div>
+          <span className="w-fit rounded-full border border-line/70 bg-surface/70 px-3 py-1 text-xs font-bold text-muted">
+            {loading ? "Analyzing" : `${tradeCount} trades scanned`}
+          </span>
+        </div>
+
+        {showMinimumDataMessage ? (
+          <div className="mt-5 rounded-[1.5rem] border border-line/60 bg-surface/[0.55] p-5 text-sm font-semibold text-muted">
+            Log at least 10 trades to unlock automatic pattern detection.
+          </div>
+        ) : null}
+
+        {showNoPatternMessage ? (
+          <div className="mt-5 rounded-[1.5rem] border border-line/60 bg-surface/[0.55] p-5 text-sm font-semibold text-muted">
+            No statistically significant patterns detected yet. Keep logging trades so the coach can separate signal from noise.
+          </div>
+        ) : null}
+
+        {!showMinimumDataMessage && !showNoPatternMessage ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {displayPatterns.map((pattern) => (
+              <DetectedPatternCard key={pattern.id} pattern={pattern} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {!isProUser ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950/55 px-5 backdrop-blur-sm">
+          <div className="max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-6 text-center text-white shadow-premium">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-zinc-950">
+              <Lock className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 text-xl font-semibold">Detected Patterns are Pro</h3>
+            <p className="mt-2 text-sm leading-6 text-white/60">
+              Upgrade to unlock automatic pattern detection across days, instruments, emotions, overtrading, revenge trading, and rule compliance.
+            </p>
+            <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5" type="button" onClick={onUpgrade}>
+              <Sparkles className="h-4 w-4" />
+              Upgrade
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function DetectedPatternCard({ pattern }: { pattern: DetectedPattern }) {
+  const Icon = pattern.tone === "success" ? CheckCircle2 : pattern.tone === "warning" ? AlertTriangle : Info;
+
+  return (
+    <article className={`rounded-[1.5rem] border p-5 ${patternToneCardClass(pattern.tone)}`}>
+      <div className="flex items-start gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${patternToneIconClass(pattern.tone)}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-6 text-ink">{pattern.insight}</p>
+          <p className="mt-3 w-fit rounded-full border border-line/60 bg-surface/70 px-3 py-1 text-xs font-bold text-muted">
+            {pattern.stat}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function getPatternPreviewCards(): DetectedPattern[] {
+  return [
+    {
+      id: "preview-day",
+      insight: "You lose most on Friday — avg P&L is -$120.00.",
+      stat: "Preview · day-of-week pattern",
+      tone: "warning"
+    },
+    {
+      id: "preview-instrument",
+      insight: "Your most profitable instrument is XAUUSD with 68% win rate.",
+      stat: "Preview · instrument pattern",
+      tone: "success"
+    },
+    {
+      id: "preview-rules",
+      insight: "Trades where Rule Followed = Yes have 72% win rate. Rule Followed = No trades have 31% win rate.",
+      stat: "Preview · discipline pattern",
+      tone: "info"
+    }
+  ];
+}
+
+function patternToneCardClass(tone: DetectedPattern["tone"]) {
+  if (tone === "success") return "border-profit/25 bg-profit/[0.07]";
+  if (tone === "warning") return "border-amber-400/30 bg-amber-400/[0.07]";
+  return "border-line/60 bg-surface/[0.55]";
+}
+
+function patternToneIconClass(tone: DetectedPattern["tone"]) {
+  if (tone === "success") return "bg-profit/15 text-profit";
+  if (tone === "warning") return "bg-amber-400/15 text-amber-500 dark:text-amber-300";
+  return "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950";
+}
+
 function DisclaimerCard() {
   const points = [
     "AI Coach is for journaling, discipline, and educational reflection only.",
@@ -729,12 +869,23 @@ function DisclaimerCard() {
 }
 
 function CoachLine({ label, value }: { label: string; value: string }) {
+  const displayValue = normalizeCoachLineValue(value);
+
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className="mt-1 text-sm font-semibold leading-6 text-ink">{value}</p>
+      <p className="mt-1 text-sm font-semibold leading-6 text-ink">{displayValue}</p>
     </div>
   );
+}
+
+function normalizeCoachLineValue(value: unknown) {
+  if (typeof value !== "string") {
+    return "Not enough data";
+  }
+
+  const normalized = value.trim().replace(/\s+/g, " ");
+  return normalized.length >= 2 ? normalized : "Not enough data";
 }
 
 function CoachEmptyState() {
@@ -774,11 +925,11 @@ function buildCoachInsights(analysis: CoachAnalysis, currency = "USD"): Insight[
     {
       label: "Worst habit",
       value: analysis.mainMistake,
-      detail: analysis.mainMistake === "Not enough review data yet"
+      detail: analysis.mainMistake === "Not enough data"
         ? "Save daily reviews to surface repeated mistakes."
         : "Turn this into one binary rule before the next session.",
       icon: TrendingDown,
-      tone: analysis.mainMistake === "Not enough review data yet" ? "neutral" : "warning"
+      tone: analysis.mainMistake === "Not enough data" ? "neutral" : "warning"
     },
     {
       label: "Strongest instrument",

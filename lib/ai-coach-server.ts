@@ -191,7 +191,7 @@ export async function getAiUsageStatus(userId: string) {
   ]);
   const isProUser = isProPlan(profileSnapshot.data() as Partial<UserProfile> | undefined ?? {});
   return {
-    dailyLimit: isProUser ? 100 : 3,
+    dailyLimit: isProUser ? 100 : 10,
     dailyUsage: usage
   };
 }

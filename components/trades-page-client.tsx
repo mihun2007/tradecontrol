@@ -1,12 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
-import { Download, Edit3, Eye, ImageIcon, Plus, SlidersHorizontal, X } from "lucide-react";
+import { Download, Edit3, Eye, ImageIcon, Plus, SlidersHorizontal, Upload, X } from "lucide-react";
 import { DeleteTradeButton } from "@/components/delete-trade-button";
+import { DisciplineStreakCard } from "@/components/discipline-streak-card";
+import { TradeImportModal } from "@/components/trade-import-modal";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { trackEvent } from "@/lib/analytics";
 import { exportTradesToCsv } from "@/lib/csv-export";
+import { calculateDisciplineStreak } from "@/lib/discipline-streak";
 import { formatCurrency, type Trade, type TradeResult, type TradeSession } from "@/lib/trades";
 
 type Filters = {
@@ -21,6 +25,8 @@ const filterSelectStyles =
 export function TradesPageClient() {
   const { trades, loading, error, refresh } = useUserTrades();
   const [filters, setFilters] = useState<Filters>({ instrument: "All", result: "All", session: "All" });
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importToast, setImportToast] = useState("");
   const [previewTrade, setPreviewTrade] = useState<Trade | null>(null);
 
   const instruments = useMemo(() => ["All", ...Array.from(new Set(trades.map((trade) => trade.instrument)))], [trades]);
@@ -42,9 +48,26 @@ export function TradesPageClient() {
   const rulesFollowed = filteredTrades.length
     ? Math.round((filteredTrades.filter((trade) => trade.ruleFollowed).length / filteredTrades.length) * 100)
     : 0;
+  const disciplineStreak = calculateDisciplineStreak(trades);
 
   return (
     <>
+      <TradeImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={(count) => {
+          setImportToast(`${count} trades imported successfully.`);
+          void refresh();
+          window.setTimeout(() => setImportToast(""), 3200);
+        }}
+      />
+
+      {importToast ? (
+        <div className="fixed right-5 top-24 z-[75] rounded-2xl border border-profit/20 bg-profit px-4 py-3 text-sm font-semibold text-white shadow-premium">
+          {importToast}
+        </div>
+      ) : null}
+
       {previewTrade?.screenshotUrl ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
           <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-zinc-950 p-4 text-white shadow-premium">
@@ -57,7 +80,15 @@ export function TradesPageClient() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <img alt={`${previewTrade.instrument} trade screenshot`} className="max-h-[76vh] w-full rounded-[1.5rem] object-contain" src={previewTrade.screenshotUrl} />
+            <Image
+              alt={`${previewTrade.instrument} trade screenshot`}
+              className="max-h-[76vh] w-full rounded-[1.5rem] object-contain"
+              height={720}
+              sizes="(min-width: 1024px) 960px, 100vw"
+              src={previewTrade.screenshotUrl}
+              unoptimized
+              width={1280}
+            />
           </div>
         </div>
       ) : null}
@@ -83,6 +114,14 @@ export function TradesPageClient() {
             <Download className="h-4 w-4" />
             Export all
           </button>
+          <button
+            className="inline-flex h-11 w-fit items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5"
+            type="button"
+            onClick={() => setImportModalOpen(true)}
+          >
+            <Upload className="h-4 w-4" />
+            Import Trades
+          </button>
           <Link
             href="/trades/new"
             className="inline-flex h-11 w-fit items-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5"
@@ -93,11 +132,12 @@ export function TradesPageClient() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Total P/L" value={formatCurrency(totalProfit)} tone={totalProfit >= 0 ? "profit" : "loss"} />
         <SummaryCard label="Win Rate" value={`${winRate}%`} />
         <SummaryCard label="Average R:R" value={`${averageRr}:1`} />
         <SummaryCard label="Rules Followed" value={`${rulesFollowed}%`} />
+        <DisciplineStreakCard stats={disciplineStreak} />
       </section>
 
       <section className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
@@ -189,12 +229,19 @@ export function TradesPageClient() {
                   </div>
                   <MobileField label="P/L" className={`font-semibold ${isProfit ? "text-profit" : isLoss ? "text-loss" : "text-muted"}`}>{formatCurrency(trade.profitLoss)}</MobileField>
                   <MobileField label="R:R" className="font-semibold text-ink">{trade.rr}:1</MobileField>
-                  <MobileField label="Rules" className={trade.ruleFollowed ? "font-semibold text-profit" : "font-semibold text-loss"}>
-                    {trade.ruleFollowed ? "Followed" : "Broken"}
+                  <MobileField label="Rules" className={trade.ruleFollowed === true ? "font-semibold text-profit" : trade.ruleFollowed === false ? "font-semibold text-loss" : "font-semibold text-muted"}>
+                    {trade.ruleFollowed === true ? "Followed" : trade.ruleFollowed === false ? "Broken" : "Unknown"}
                   </MobileField>
                   {trade.screenshotUrl ? (
                     <button className="h-11 w-full overflow-hidden rounded-xl border border-line/60 bg-surface/70 sm:w-16" type="button" onClick={() => setPreviewTrade(trade)} aria-label="Open screenshot preview">
-                      <img alt="" className="h-full w-full object-cover" src={trade.screenshotUrl} />
+                      <Image
+                        alt=""
+                        className="h-full w-full object-cover"
+                        height={44}
+                        src={trade.screenshotUrl}
+                        unoptimized
+                        width={64}
+                      />
                     </button>
                   ) : (
                     <span className="flex h-11 w-full items-center justify-center rounded-xl border border-line/60 bg-surface/60 text-muted sm:w-11">

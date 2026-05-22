@@ -2,7 +2,7 @@ export type TradeResult = "Win" | "Loss" | "Breakeven" | "Open";
 export type TradeSession = "Asia" | "London" | "New York";
 export type TradeType = "Buy" | "Sell";
 export type SetupQuality = "A+" | "A" | "B" | "C";
-export type Emotion = "Calm" | "Fear" | "Greed" | "Revenge" | "FOMO" | "Confident";
+export type Emotion = "Calm" | "Fear" | "Greed" | "Revenge" | "FOMO" | "Anxious" | "Confident" | "Unknown";
 
 export type TradeSide = TradeType;
 export type TradingSession = TradeSession;
@@ -24,7 +24,7 @@ export type Trade = {
   strategy: string;
   setupQuality: SetupQuality;
   emotion: Emotion;
-  ruleFollowed: boolean;
+  ruleFollowed: boolean | null;
   notes: string;
   screenshotUrl: string;
   screenshotPath: string;
@@ -48,7 +48,7 @@ export type NewTrade = {
   strategy: string;
   setupQuality: SetupQuality;
   emotion: Emotion;
-  ruleFollowed: boolean;
+  ruleFollowed: boolean | null;
   notes: string;
   screenshotUrl: string;
   screenshotPath: string;

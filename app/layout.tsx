@@ -6,7 +6,7 @@ import { AnalyticsProvider } from "@/components/analytics-provider";
 import { LanguageProvider } from "@/components/language-provider";
 import { SubscriptionProvider } from "@/components/subscription-provider";
 import { UserProfileProvider } from "@/components/user-profile-provider";
-import { absoluteUrl, defaultDescription, openGraphImage, seoKeywords, siteName, siteUrl } from "./seo";
+import { absoluteUrl, openGraphImage, seoKeywords, siteName, siteUrl } from "./seo";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,10 +18,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TradeControl | Trading Journal, Risk Manager and AI Trading Coach",
+    default: "TradeControl — Trading Journal & AI Risk Desk for Traders",
     template: `%s | ${siteName}`
   },
-  description: defaultDescription,
+  description:
+    "Track every trade, analyze performance, and get AI-powered coaching. Built for prop firm and retail traders. Free trading journal with risk management tools.",
   applicationName: siteName,
   authors: [{ name: siteName }],
   creator: siteName,
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
   keywords: seoKeywords,
   referrer: "strict-origin-when-cross-origin",
   alternates: {
-    canonical: "/"
+    canonical: siteUrl
   },
   icons: {
     icon: "/icon.svg",
@@ -38,18 +39,21 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "TradeControl | Trading Journal, Risk Manager and AI Trading Coach",
-    description: defaultDescription,
+    title: "TradeControl — Trading Journal & AI Risk Desk for Traders",
+    description:
+      "Track every trade, analyze performance, and get AI-powered coaching. Built for prop firm and retail traders. Free trading journal with risk management tools.",
     siteName,
     type: "website",
-    url: "/",
+    url: siteUrl,
     locale: "en_US",
     images: [openGraphImage]
   },
   twitter: {
     card: "summary_large_image",
-    title: "TradeControl | Professional Trading Journal",
-    description: defaultDescription,
+    site: "@tradecontrol",
+    title: "TradeControl — Trading Journal & AI Risk Desk for Traders",
+    description:
+      "Track every trade, analyze performance, and get AI-powered coaching. Built for prop firm and retail traders. Free trading journal with risk management tools.",
     images: [openGraphImage.url]
   },
   robots: {
@@ -80,35 +84,11 @@ const jsonLd = {
       "@id": absoluteUrl("/#website"),
       name: siteName,
       url: absoluteUrl("/"),
-      description: defaultDescription,
+      description:
+        "Track every trade, analyze performance, and get AI-powered coaching. Built for prop firm and retail traders. Free trading journal with risk management tools.",
       publisher: {
         "@id": absoluteUrl("/#organization")
       }
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": absoluteUrl("/#software"),
-      name: siteName,
-      applicationCategory: "FinanceApplication",
-      operatingSystem: "Web",
-      url: absoluteUrl("/"),
-      description: defaultDescription,
-      offers: [
-        {
-          "@type": "Offer",
-          name: "Free",
-          price: "0",
-          priceCurrency: "USD",
-          url: absoluteUrl("/pricing")
-        },
-        {
-          "@type": "Offer",
-          name: "Pro",
-          price: "9.99",
-          priceCurrency: "USD",
-          url: absoluteUrl("/pricing")
-        }
-      ]
     }
   ]
 };
@@ -121,6 +101,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://firestore.googleapis.com" />
+        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+        <link rel="preconnect" href="https://securetoken.googleapis.com" />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        <link rel="preconnect" href="https://eu.i.posthog.com" />
+        <link rel="preconnect" href="https://api.stripe.com" />
+        <link rel="preconnect" href="https://checkout.stripe.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

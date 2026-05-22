@@ -587,7 +587,7 @@ function defaultReviewForm(summary: DaySummary): ReviewFormState {
   return {
     bestDecision: "",
     dailyRating: inferRating(summary),
-    emotionalState: summary.trades[0]?.emotion ?? "Calm",
+    emotionalState: summary.trades[0]?.emotion === "Unknown" ? "Calm" : summary.trades[0]?.emotion ?? "Calm",
     followedPlan: cleanRules,
     journaledEveryTrade: Boolean(summary.tradeCount),
     lessonLearned: "",

@@ -65,12 +65,12 @@ export function findMostCommonMistake(dailyReviews: DailyReview[]) {
   const counts = new Map<string, number>();
 
   dailyReviews.forEach((review) => {
-    const mistake = review.mainMistake.trim();
+    const mistake = normalizeJournalText(review.mainMistake);
     if (!mistake) return;
     counts.set(mistake, (counts.get(mistake) ?? 0) + 1);
   });
 
-  return Array.from(counts.entries()).sort((first, second) => second[1] - first[1])[0]?.[0] || "Not enough review data yet";
+  return Array.from(counts.entries()).sort((first, second) => second[1] - first[1])[0]?.[0] || "Not enough data";
 }
 
 export function findWeakestEmotion(dailyReviews: DailyReview[], trades: Trade[]) {
@@ -187,15 +187,17 @@ export function buildCoachAnalysis(input: {
   const totalExpenses = expenses.reduce((total, expense) => total + safeNumber(expense.amount), 0);
   const netProfit = calculateNetProfit(trades);
   const disciplineScore = calculateDisciplineScore(ruleCompliance, riskViolations.length, overtradingDays.length);
+  const bestBehavior = findBestBehavior(dailyReviews, trades, ruleCompliance, bestSession?.name);
+  const mainMistake = findMostCommonMistake(dailyReviews);
 
   return {
     averageRiskControl: Math.max(0, Math.min(100, Math.round(100 - riskViolations.length * 12))),
-    bestBehavior: recentReview?.bestDecision || inferBestBehavior(ruleCompliance, bestSession?.name),
+    bestBehavior,
     bestInstrument,
     bestSession,
     disciplineScore,
     expenseTotal: totalExpenses,
-    mainMistake: findMostCommonMistake(dailyReviews),
+    mainMistake,
     netAfterExpenses: netProfit - totalExpenses,
     netProfit,
     overtradingDays,
@@ -306,7 +308,54 @@ function calculateDisciplineScore(ruleCompliance: number, riskViolationCount: nu
 function inferBestBehavior(ruleCompliance: number, bestSession?: string) {
   if (ruleCompliance >= 85) return "You are preserving process quality by following the majority of your rules.";
   if (bestSession) return `Your cleanest behavior appears when you keep trades concentrated in the ${bestSession} session.`;
-  return "Start by logging one best decision per daily review.";
+  return "Not enough data";
+}
+
+function findBestBehavior(dailyReviews: DailyReview[], trades: Trade[], ruleCompliance: number, bestSession?: string) {
+  const explicitBestDecision = [...dailyReviews]
+    .sort((first, second) => second.date.localeCompare(first.date))
+    .map((review) => normalizeJournalText(review.bestDecision))
+    .find(Boolean);
+
+  if (explicitBestDecision) {
+    return explicitBestDecision;
+  }
+
+  const cleanReviewCount = dailyReviews.filter((review) => (
+    review.followedPlan &&
+    review.respectedRisk &&
+    review.noRevengeTrading &&
+    review.stoppedAtLimit &&
+    review.journaledEveryTrade
+  )).length;
+
+  if (cleanReviewCount) {
+    return "You are consistently marking clean discipline in your daily reviews.";
+  }
+
+  const ruleFollowedTrades = trades.filter((trade) => trade.ruleFollowed);
+  if (trades.length >= 3 && ruleFollowedTrades.length / trades.length >= 0.8) {
+    return "You are preserving process quality by following the majority of your trade rules.";
+  }
+
+  if (trades.length && bestSession) {
+    return `Your cleanest behavior appears when you keep trades concentrated in the ${bestSession} session.`;
+  }
+
+  return inferBestBehavior(ruleCompliance, bestSession);
+}
+
+function normalizeJournalText(value: unknown) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized || normalized.length < 2) {
+    return "";
+  }
+
+  return normalized;
 }
 
 function buildSuggestedRule(recentReview: DailyReview | null, riskViolations: RiskViolation[], overtradingDays: string[], profile?: UserProfile | null) {

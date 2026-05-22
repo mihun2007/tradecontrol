@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tradecontrol.app";
+export const siteUrl = "https://tradecontrol.xyz";
 
 export const siteName = "TradeControl";
 
@@ -9,23 +9,27 @@ export const defaultDescription =
 
 export const seoKeywords = [
   "trading journal",
+  "prop firm journal",
+  "trade tracker",
+  "AI trading coach",
+  "risk management",
+  "FTMO journal",
+  "forex journal",
   "trade journal",
   "trading analytics",
   "risk management dashboard",
-  "AI trading coach",
   "trading discipline",
   "trade tracking software",
   "trading performance tracker",
-  "forex trading journal",
   "futures trading journal",
   "stock trading journal"
 ];
 
 export const openGraphImage = {
-  url: "/opengraph-image",
+  url: "https://tradecontrol.xyz/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "TradeControl trading journal and risk dashboard"
+  alt: "TradeControl — Trading Journal and AI Risk Desk"
 };
 
 export const noIndexMetadata: Metadata = {
@@ -47,31 +51,38 @@ export function pageMetadata({
   title,
   description,
   path,
+  keywords = seoKeywords,
   noIndex = false
 }: {
   title: string;
   description: string;
   path: string;
+  keywords?: string[];
   noIndex?: boolean;
 }): Metadata {
+  const url = absoluteUrl(path);
+
   return {
-    title,
+    title: {
+      absolute: title
+    },
     description,
-    keywords: seoKeywords,
+    keywords,
     alternates: {
-      canonical: path
+      canonical: url
     },
     openGraph: {
-      title: `${title} | ${siteName}`,
+      title,
       description,
       siteName,
       type: "website",
-      url: path,
+      url,
       images: [openGraphImage]
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${siteName}`,
+      site: "@tradecontrol",
+      title,
       description,
       images: [openGraphImage.url]
     },

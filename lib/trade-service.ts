@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
   type DocumentData,
   type DocumentSnapshot,
   type FieldValue,
@@ -16,6 +17,7 @@ import {
   type Timestamp
 } from "firebase/firestore";
 import { requireFirestoreDb } from "@/lib/firebase";
+import { calculateDisciplineStreak, type DisciplineStreakStats } from "@/lib/discipline-streak";
 import { deleteTradeScreenshot, uploadTradeScreenshot } from "@/lib/screenshot-storage";
 import { calculateRiskReward, type NewTrade, type Trade, type TradeType } from "@/lib/trades";
 
@@ -24,6 +26,10 @@ type FirestoreTrade = Omit<NewTrade, "rr"> & {
   type?: TradeType;
   screenshotPath?: string;
   createdAt?: Timestamp | FieldValue | string;
+  updatedAt?: Timestamp | FieldValue | string;
+};
+
+type FirestoreDisciplineStreak = DisciplineStreakStats & {
   updatedAt?: Timestamp | FieldValue | string;
 };
 
@@ -36,6 +42,11 @@ function requireUserId(userId: string) {
 function tradesCollection(userId: string) {
   requireUserId(userId);
   return collection(requireFirestoreDb(), "users", userId, "trades");
+}
+
+function disciplineStreakDoc(userId: string) {
+  requireUserId(userId);
+  return doc(requireFirestoreDb(), "users", userId, "stats", "disciplineStreak");
 }
 
 function serializeDate(value: unknown) {
@@ -70,7 +81,7 @@ function tradeFromSnapshot(snapshot: QueryDocumentSnapshot<DocumentData> | Docum
     strategy: data.strategy ?? "Manual entry",
     setupQuality: data.setupQuality ?? "A",
     emotion: data.emotion ?? "Calm",
-    ruleFollowed: Boolean(data.ruleFollowed),
+    ruleFollowed: data.ruleFollowed === true ? true : data.ruleFollowed === false ? false : null,
     notes: data.notes ?? "",
     screenshotUrl: data.screenshotUrl ?? "",
     screenshotPath: data.screenshotPath ?? "",
@@ -92,7 +103,39 @@ export async function createTrade(userId: string, tradeData: NewTrade, screensho
   };
 
   await setDoc(reference, payload);
+  await recalculateDisciplineStreakSafely(userId, "create");
   return reference.id;
+}
+
+export async function createTradesBulk(userId: string, trades: NewTrade[]) {
+  requireUserId(userId);
+
+  if (!trades.length) {
+    return 0;
+  }
+
+  const db = requireFirestoreDb();
+  const batchSize = 400;
+
+  for (let index = 0; index < trades.length; index += batchSize) {
+    const batch = writeBatch(db);
+    const chunk = trades.slice(index, index + batchSize);
+
+    chunk.forEach((tradeData) => {
+      const reference = doc(tradesCollection(userId));
+      batch.set(reference, {
+        ...tradeData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      } satisfies FirestoreTrade);
+    });
+
+    await batch.commit();
+  }
+
+  await recalculateDisciplineStreakSafely(userId, "bulk import");
+
+  return trades.length;
 }
 
 export async function getTrades(userId: string) {
@@ -127,6 +170,7 @@ export async function updateTrade(userId: string, tradeId: string, tradeData: Pa
       : {}),
     updatedAt: serverTimestamp()
   });
+  await recalculateDisciplineStreakSafely(userId, "update");
 
   if (screenshot && previousScreenshotPath && previousScreenshotPath !== screenshot.screenshotPath) {
     try {
@@ -148,6 +192,7 @@ export async function deleteTrade(userId: string, tradeId: string) {
   const screenshotPath = snapshot.exists() ? (snapshot.data() as FirestoreTrade).screenshotPath : undefined;
 
   await deleteDoc(reference);
+  await recalculateDisciplineStreakSafely(userId, "delete");
 
   if (screenshotPath) {
     try {
@@ -155,5 +200,43 @@ export async function deleteTrade(userId: string, tradeId: string) {
     } catch {
       // The Firestore trade was deleted; stale screenshot cleanup can be retried from Storage if needed.
     }
+  }
+}
+
+export async function getDisciplineStreak(userId: string): Promise<DisciplineStreakStats> {
+  const snapshot = await getDoc(disciplineStreakDoc(userId));
+
+  if (!snapshot.exists()) {
+    return recalculateDisciplineStreak(userId);
+  }
+
+  const data = snapshot.data() as Partial<FirestoreDisciplineStreak>;
+
+  return {
+    bestStreak: Number(data.bestStreak) || 0,
+    currentStreak: Number(data.currentStreak) || 0,
+    isPersonalRecord: Boolean(data.isPersonalRecord),
+    lastCleanTradingDay: typeof data.lastCleanTradingDay === "string" ? data.lastCleanTradingDay : "",
+    lastTradingDay: typeof data.lastTradingDay === "string" ? data.lastTradingDay : ""
+  };
+}
+
+export async function recalculateDisciplineStreak(userId: string): Promise<DisciplineStreakStats> {
+  const snapshot = await getDocs(query(tradesCollection(userId), orderBy("date", "asc")));
+  const stats = calculateDisciplineStreak(snapshot.docs.map(tradeFromSnapshot));
+
+  await setDoc(disciplineStreakDoc(userId), {
+    ...stats,
+    updatedAt: serverTimestamp()
+  });
+
+  return stats;
+}
+
+async function recalculateDisciplineStreakSafely(userId: string, source: string) {
+  try {
+    await recalculateDisciplineStreak(userId);
+  } catch (streakError) {
+    console.warn(`Discipline streak recalculation failed after trade ${source}.`, streakError);
   }
 }

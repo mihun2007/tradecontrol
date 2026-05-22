@@ -1,5 +1,5 @@
 export type DailyRating = "Great" | "Good" | "Bad" | "Dangerous";
-export type EmotionalState = "Calm" | "Fear" | "Greed" | "FOMO" | "Revenge" | "Confident" | "Tired";
+export type EmotionalState = "Calm" | "Fear" | "Greed" | "FOMO" | "Revenge" | "Anxious" | "Confident" | "Tired";
 
 export type DailyReview = {
   id: string;
@@ -22,7 +22,7 @@ export type DailyReview = {
 
 export type NewDailyReview = Omit<DailyReview, "id" | "createdAt" | "updatedAt">;
 
-export const emotionalStates: EmotionalState[] = ["Calm", "Fear", "Greed", "FOMO", "Revenge", "Confident", "Tired"];
+export const emotionalStates: EmotionalState[] = ["Calm", "Fear", "Greed", "FOMO", "Revenge", "Anxious", "Confident", "Tired"];
 export const dailyRatings: DailyRating[] = ["Great", "Good", "Bad", "Dangerous"];
 
 export function isDisciplineClean(review: Pick<DailyReview, "followedPlan" | "respectedRisk" | "noRevengeTrading" | "stoppedAtLimit" | "journaledEveryTrade">) {

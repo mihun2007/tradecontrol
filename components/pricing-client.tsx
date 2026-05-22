@@ -11,7 +11,7 @@ const freeFeatures = [
   "50 trades total",
   "Basic dashboard",
   "Limited analytics",
-  "3 AI Coach messages per day"
+  "10 AI Coach messages per day"
 ];
 
 const proFeatures = [

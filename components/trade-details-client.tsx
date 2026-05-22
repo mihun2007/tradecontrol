@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ElementType, ReactNode } from "react";
@@ -119,8 +120,8 @@ export function TradeDetailsClient({ tradeId }: { tradeId: string }) {
               <p className="text-sm font-semibold text-ink">Execution</p>
               <p className="mt-1 text-sm text-muted">Price levels, sizing, and risk captured at entry.</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${trade.ruleFollowed ? "bg-profit/12 text-profit" : "bg-loss/12 text-loss"}`}>
-              {trade.ruleFollowed ? "Rules followed" : "Rules broken"}
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${trade.ruleFollowed === true ? "bg-profit/12 text-profit" : trade.ruleFollowed === false ? "bg-loss/12 text-loss" : "bg-zinc-500/10 text-muted"}`}>
+              {trade.ruleFollowed === true ? "Rules followed" : trade.ruleFollowed === false ? "Rules broken" : "Rules unknown"}
             </span>
           </div>
 
@@ -144,7 +145,15 @@ export function TradeDetailsClient({ tradeId }: { tradeId: string }) {
           <div className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055]">
             <p className="text-sm font-semibold text-ink">Screenshot</p>
             {trade.screenshotUrl ? (
-              <img alt={`${trade.instrument} screenshot`} className="mt-4 max-h-[420px] w-full rounded-[1.5rem] object-contain shadow-soft" src={trade.screenshotUrl} />
+              <Image
+                alt={`${trade.instrument} screenshot`}
+                className="mt-4 max-h-[420px] w-full rounded-[1.5rem] object-contain shadow-soft"
+                height={520}
+                sizes="(min-width: 1280px) 420px, 100vw"
+                src={trade.screenshotUrl}
+                unoptimized
+                width={840}
+              />
             ) : (
               <div className="mt-4 flex min-h-56 flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-line bg-surface/50 text-center">
                 <ImageIcon className="h-8 w-8 text-muted" />

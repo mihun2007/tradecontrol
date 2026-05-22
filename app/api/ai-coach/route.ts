@@ -20,7 +20,7 @@ import { getOpenAIClient, getOpenAIModel } from "@/lib/openai";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 10;
 const PRO_DAILY_LIMIT = 100;
 
 type OpenAIResponseLike = {
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const dailyLimit = isProUser ? PRO_DAILY_LIMIT : FREE_DAILY_LIMIT;
 
     if (dailyUsage >= dailyLimit) {
-      return apiError(isProUser ? "AI Coach daily safety limit reached. Try again tomorrow." : "Free users get 3 AI Coach messages per day. Upgrade to Pro for more coaching.", 429);
+      return apiError(isProUser ? "AI Coach daily safety limit reached. Try again tomorrow." : "Free users get 10 AI Coach messages per day. Upgrade to Pro for more coaching.", 429);
     }
 
     if (!isProUser && (selectedTimeRange === "90D" || selectedTimeRange === "ALL")) {

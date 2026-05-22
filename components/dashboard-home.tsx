@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Award, BookOpenCheck, ChevronRight, Target } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ChartCard } from "@/components/chart-card";
+import { DisciplineStreakCard } from "@/components/discipline-streak-card";
 import { MetricCard } from "@/components/metric-card";
 import { MonthlyProgress } from "@/components/monthly-progress";
 import { RecentTrades } from "@/components/recent-trades";
@@ -14,6 +15,7 @@ import { useUserDailyReviews } from "@/hooks/use-user-daily-reviews";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { isDisciplineClean } from "@/lib/daily-reviews";
+import { calculateDisciplineStreak } from "@/lib/discipline-streak";
 import { buildWeeklyReport } from "@/lib/notifications";
 import { formatCurrency, type Trade } from "@/lib/trades";
 
@@ -22,6 +24,7 @@ export function DashboardHome() {
   const { reviews } = useUserDailyReviews();
   const { profile } = useUserProfile();
   const stats = buildDashboardStats(trades, profile?.accountCurrency ?? "USD");
+  const disciplineStreak = calculateDisciplineStreak(trades);
   const todayReview = reviews.find((review) => review.date === new Date().toISOString().slice(0, 10));
   const weeklyReport = buildWeeklyReport(trades);
 
@@ -42,12 +45,17 @@ export function DashboardHome() {
           </div>
         </div>
         {error ? <p className="mb-4 rounded-2xl border border-loss/25 bg-loss/10 px-4 py-3 text-sm font-semibold text-loss">{error}</p> : null}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {loading
-            ? Array.from({ length: 4 }).map((_, index) => (
+            ? Array.from({ length: 5 }).map((_, index) => (
                 <div key={index} className="h-36 animate-pulse rounded-[1.5rem] border border-white/10 bg-white/[0.075]" />
               ))
-            : stats.map((stat) => <MetricCard key={stat.label} {...stat} />)}
+            : (
+                <>
+                  {stats.map((stat) => <MetricCard key={stat.label} {...stat} />)}
+                  <DisciplineStreakCard mode="dark" stats={disciplineStreak} />
+                </>
+              )}
         </div>
       </section>
 
@@ -184,11 +192,22 @@ function buildDashboardStats(trades: Trade[], currency: string) {
     },
     {
       label: "Max Drawdown",
-      value: formatCurrency(maxDrawdown, currency),
+      value: formatDrawdown(maxDrawdown, currency),
       detail: `${Math.abs((maxDrawdown / 10000) * 100).toFixed(1)}% of mock equity`,
-      tone: maxDrawdown < 0 ? "loss" : "neutral"
+      tone: maxDrawdown < 0 ? "loss" : "neutral",
+      valueClassName: maxDrawdown < 0 ? "text-loss" : "text-white/60"
     }
   ] as const;
+}
+
+function formatDrawdown(value: number, currency: string) {
+  const drawdown = Math.min(0, value);
+
+  if (drawdown === 0) {
+    return formatCurrency(0, currency).replace(/^\+/, "");
+  }
+
+  return formatCurrency(drawdown, currency);
 }
 
 function calculateMaxDrawdown(trades: Trade[]) {

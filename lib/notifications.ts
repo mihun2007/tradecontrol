@@ -157,7 +157,7 @@ export function buildWeeklyReport(trades: Trade[]): WeeklyReport {
   const bestInstrument =
     Object.entries(instrumentTotals).sort(([, left], [, right]) => right - left)[0]?.[0] ?? "No trades yet";
   const ruleBreaks = weeklyTrades.filter((trade) => !trade.ruleFollowed).length;
-  const emotionalTrades = weeklyTrades.filter((trade) => ["Fear", "Greed", "Revenge", "FOMO"].includes(trade.emotion)).length;
+  const emotionalTrades = weeklyTrades.filter((trade) => ["Fear", "Greed", "Revenge", "FOMO", "Anxious"].includes(trade.emotion)).length;
   const mainMistake = ruleBreaks
     ? "Breaking written rules"
     : emotionalTrades

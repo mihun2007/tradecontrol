@@ -15,7 +15,7 @@ const tradeCsvColumns: Array<{ header: string; value: (trade: Trade) => string |
   { header: "Strategy", value: (trade) => trade.strategy },
   { header: "Setup Quality", value: (trade) => trade.setupQuality },
   { header: "Emotion", value: (trade) => trade.emotion },
-  { header: "Rule Followed", value: (trade) => trade.ruleFollowed ? "Yes" : "No" },
+  { header: "Rule Followed", value: (trade) => trade.ruleFollowed === true ? "Yes" : trade.ruleFollowed === false ? "No" : "Unknown" },
   { header: "Notes", value: (trade) => trade.notes }
 ];
 

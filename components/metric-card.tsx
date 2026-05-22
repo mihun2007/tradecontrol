@@ -5,9 +5,10 @@ type MetricCardProps = {
   value: string;
   detail: string;
   tone: "profit" | "loss" | "neutral";
+  valueClassName?: string;
 };
 
-export function MetricCard({ label, value, detail, tone }: MetricCardProps) {
+export function MetricCard({ label, value, detail, tone, valueClassName }: MetricCardProps) {
   const Icon = tone === "profit" ? ArrowUpRight : tone === "loss" ? ArrowDownRight : Minus;
   const toneClass =
     tone === "profit" ? "text-profit" : tone === "loss" ? "text-loss" : "text-white/60";
@@ -20,7 +21,7 @@ export function MetricCard({ label, value, detail, tone }: MetricCardProps) {
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="mt-4 text-3xl font-semibold tracking-normal">{value}</p>
+      <p className={`mt-4 text-3xl font-semibold tracking-normal ${valueClassName ?? "text-white"}`}>{value}</p>
       <p className={`mt-2 text-sm ${tone === "neutral" ? "text-white/48" : toneClass}`}>{detail}</p>
     </article>
   );

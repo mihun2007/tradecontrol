@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { JsonLd } from "@/components/json-ld";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
 import {
@@ -21,29 +22,64 @@ import {
 } from "lucide-react";
 
 const features = [
-  ["Trading Journal", "Log setups, screenshots, notes, and post-trade reflections in a repeatable workflow.", LineChart],
-  ["Risk Manager", "Set rules, watch exposure, and catch discipline drift before one session gets expensive.", ShieldCheck],
+  ["Trading Journal", "Log setups, screenshots, notes, and post-trade reflections in a repeatable trade log.", LineChart],
+  ["Risk Manager", "Set rules, watch exposure, and keep risk management for traders visible before one session gets expensive.", ShieldCheck],
   ["Calendar Review", "See streaks, red days, strong sessions, and emotional patterns across your trading month.", CalendarDays],
-  ["Analytics", "Review win rate, realized P&L, consistency, trade quality, and process trends.", BarChart3],
-  ["AI Coach", "Turn journal entries into practical feedback about mistakes, bias, and next actions.", Brain],
+  ["Analytics", "Review win rate, realized P&L, consistency, trade quality, and trading performance analytics.", BarChart3],
+  ["AI Coach", "Use an AI trading coach to turn journal entries into feedback about mistakes, bias, and next actions.", Brain],
   ["Expense Tracking", "Track fees, tools, data, platforms, and education to understand real profit.", CircleDollarSign],
   ["Screenshot Upload", "Attach chart context to every trade so reviews stay visual and specific.", Camera],
-  ["Pro Dashboard", "Bring trades, risk, emotions, analytics, and expenses into one focused command center.", Sparkles],
+  ["Pro Dashboard", "Bring your trading journal, risk rules, emotions, analytics, and expenses into one command center.", Sparkles],
 ] as const;
 
 const problems = [
-  "Traders lose control through overtrading when pressure turns a plan into reaction.",
+  "Traders lose control through overtrading when pressure turns a written plan into reaction.",
   "Risk rules get ignored after a loss, during a streak, or when confidence spikes.",
-  "Emotions are not reviewed while the memory is still useful, so patterns stay hidden.",
+  "Emotions are not reviewed while the memory is still useful, so patterns stay hidden in the trade tracker.",
   "Gross P&L hides the real result after commissions, subscriptions, tools, and data.",
 ];
 
 const steps = [
-  "Add your trades",
-  "Review your risk and emotions",
-  "Learn from analytics",
-  "Improve your discipline",
+  "Add every trade",
+  "Review risk and emotions",
+  "Study performance analytics",
+  "Improve trading discipline",
 ];
+
+const socialProof = [
+  "Prop firm traders",
+  "FTMO-style challenge accounts",
+  "Forex trading journal workflows",
+  "Retail trade trackers"
+] as const;
+
+const faqs = [
+  {
+    question: "What is the best trading journal for prop firm traders?",
+    answer:
+      "The best trading journal for prop firm traders is one that tracks rules, risk limits, daily discipline, drawdown pressure, and performance patterns. TradeControl is built for those review habits, including FTMO-style evaluation workflows without claiming any official affiliation."
+  },
+  {
+    question: "How do I track forex trades in a forex trading journal?",
+    answer:
+      "A forex trading journal should record the pair, session, setup, entry, stop loss, take profit, lot size, result, emotion, screenshots, and notes. TradeControl gives traders a structured trade log so every forex trade can be reviewed later."
+  },
+  {
+    question: "What is trade risk management?",
+    answer:
+      "Trade risk management is the process of controlling position size, maximum daily loss, risk per trade, drawdown, and rule discipline before and after each trade. It helps traders avoid one bad session damaging the account."
+  },
+  {
+    question: "Can TradeControl work as an FTMO journal?",
+    answer:
+      "Yes. TradeControl can be used as an FTMO journal or prop firm trading journal for tracking trades, risk limits, discipline, drawdown behavior, and review notes. It is not affiliated with FTMO."
+  },
+  {
+    question: "How does the AI trading coach use my trade log?",
+    answer:
+      "The AI trading coach reviews your saved trades, emotions, rule-followed status, performance metrics, and daily reviews to surface behavioral patterns. It focuses on discipline and process, not buy or sell signals."
+  }
+] as const;
 
 const testimonials = [
   {
@@ -65,6 +101,36 @@ const testimonials = [
     role: "Options trader",
   },
 ];
+
+const softwareApplicationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "TradeControl",
+  url: "https://tradecontrol.xyz",
+  description:
+    "Trading journal and AI risk desk for prop firm and retail traders. Track trades, analyze performance, get AI coaching.",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free plan available"
+  }
+};
+
+const homepageFaqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer
+    }
+  }))
+};
 
 function useAuthUser() {
   const [user, setUser] = useState<User | null>(null);
@@ -212,6 +278,8 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <JsonLd data={softwareApplicationJsonLd} id="software-application-json-ld" />
+      <JsonLd data={homepageFaqJsonLd} id="homepage-faq-json-ld" />
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
@@ -246,11 +314,11 @@ export default function LandingPage() {
               Built for process-first traders
             </div>
             <h1 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">
-              Master your trading discipline.
+              Trading Journal &amp; AI Trading Coach for Traders.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-              Track trades, control risk, review emotions, and improve your trading process with one professional
-              dashboard.
+              Use TradeControl as your trading journal, prop firm trading journal, trade tracker, and AI trading coach
+              for cleaner reviews, risk management, and better trading decisions.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <PrimaryCta user={user} ready={ready}>
@@ -273,11 +341,11 @@ export default function LandingPage() {
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">The hidden leak</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Most trading problems start as control problems.
+              Risk Management for Traders Starts Before the Next Entry.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-300">
-              TradeControl gives you a structured place to see the habits, costs, and emotional decisions your brokerage
-              statement will never explain.
+              TradeControl gives you a structured trading journal to see the habits, costs, and emotional decisions your
+              brokerage statement will never explain.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -296,9 +364,9 @@ export default function LandingPage() {
       <section id="features" className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Features</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Trade tracker workspace</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Everything your trading process needs after the entry.
+              Track Every Trade With Precision in One Trading Journal.
             </h2>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -318,9 +386,9 @@ export default function LandingPage() {
       <section className="bg-white/[0.03] px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">How it works</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Review loop</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              A repeatable loop for better decisions.
+              Turn Your Trade Log Into Trading Performance Analytics.
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -331,7 +399,8 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-white">{step}</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Build the habit, review the evidence, and let your process improve one session at a time.
+                  Build the habit, review the evidence, and use your trading performance analytics to improve one
+                  session at a time.
                 </p>
               </div>
             ))}
@@ -342,15 +411,15 @@ export default function LandingPage() {
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Pricing</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Trading journal pricing</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Start simple. Upgrade when you need the full control room.
+              Start Free With a Prop Firm Trading Journal That Scales.
             </h2>
           </div>
           <div className="mx-auto mt-10 grid max-w-5xl gap-5 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-7">
               <h3 className="text-2xl font-semibold text-white">Free</h3>
-              <p className="mt-2 text-slate-400">For building the journaling habit.</p>
+              <p className="mt-2 text-slate-400">For building a consistent trade tracker and journaling habit.</p>
               <p className="mt-8 text-4xl font-semibold text-white">$0</p>
               <div className="mt-8 space-y-3 text-sm text-slate-300">
                 {["5 trades per day", "50 trades total", "Basic dashboard", "Limited analytics"].map((item) => (
@@ -372,7 +441,7 @@ export default function LandingPage() {
                 Most complete
               </div>
               <h3 className="text-2xl font-semibold text-white">Pro</h3>
-              <p className="mt-2 text-slate-400">For serious traders reviewing performance, risk, and behavior.</p>
+              <p className="mt-2 text-slate-400">For serious traders reviewing performance, risk, and behavior with deeper analytics.</p>
               <p className="mt-8 text-4xl font-semibold text-white">
                 $9.99<span className="text-base font-normal text-slate-400">/month</span>
               </p>
@@ -397,6 +466,24 @@ export default function LandingPage() {
       </section>
 
       <section className="border-y border-white/10 bg-white/[0.03] px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-12 max-w-3xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">As used by traders on</p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Built for Prop Firm Traders, Forex Journals, and Retail Trade Logs.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-slate-400">
+            TradeControl is designed for traders who review FTMO-style challenges, funded account rules, forex trading
+            journal routines, and personal trade tracker workflows. It is an independent tool and is not affiliated with
+            any prop firm.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {socialProof.map((item) => (
+              <span key={item} className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-100">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
         <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
           {testimonials.map((testimonial) => (
             <figure key={testimonial.name} className="rounded-xl border border-white/10 bg-slate-950/70 p-6">
@@ -411,15 +498,39 @@ export default function LandingPage() {
       </section>
 
       <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Trading journal FAQ</p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Questions About Trading Journals, Trade Trackers, and AI Coaching.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-300">
+              Answers for traders comparing a forex trading journal, FTMO journal workflow, risk management tool, or AI
+              trading coach.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 lg:grid-cols-2">
+            {faqs.map((faq) => (
+              <article key={faq.question} className="rounded-xl border border-white/10 bg-white/[0.04] p-6">
+                <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-400">{faq.answer}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400 text-slate-950">
             <WalletCards className="h-7 w-7" />
           </div>
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-            Start your trading journal today
+            Start Your Free Trading Journal Today.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-            Build the review system that helps you trade with more patience, cleaner rules, and better awareness.
+            Build the review system that helps you trade with more patience, cleaner rules, stronger risk management,
+            and better awareness.
           </p>
           <div className="mt-9">
             <PrimaryCta user={user} ready={ready}>

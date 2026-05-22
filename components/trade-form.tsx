@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, Lock, Save, X } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Save, X } from "lucide-react";
+import { PaywallModal } from "@/components/paywall-modal";
 import { useSubscription } from "@/components/subscription-provider";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { trackEvent } from "@/lib/analytics";
@@ -26,7 +28,7 @@ type FormState = {
   strategy: string;
   setupQuality: Trade["setupQuality"];
   emotion: Trade["emotion"];
-  ruleFollowed: "Yes" | "No";
+  ruleFollowed: "Yes" | "No" | "Unknown";
   notes: string;
 };
 
@@ -98,7 +100,7 @@ function formFromTrade(trade?: Trade): FormState {
     strategy: trade.strategy,
     setupQuality: trade.setupQuality,
     emotion: trade.emotion,
-    ruleFollowed: trade.ruleFollowed ? "Yes" : "No",
+    ruleFollowed: trade.ruleFollowed === true ? "Yes" : trade.ruleFollowed === false ? "No" : "Unknown",
     notes: trade.notes
   };
 }
@@ -122,6 +124,7 @@ export function TradeForm({
   const [profileDefaultsApplied, setProfileDefaultsApplied] = useState(false);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState(initialTrade?.screenshotUrl ?? "");
+  const [screenshotPaywallOpen, setScreenshotPaywallOpen] = useState(false);
 
   const entry = Number(form.entryPrice);
   const stop = Number(form.stopLoss);
@@ -165,7 +168,7 @@ export function TradeForm({
     setError(null);
 
     if (!isProUser) {
-      setError("Screenshot upload is a Pro feature. Upgrade to attach chart screenshots.");
+      setScreenshotPaywallOpen(true);
       return;
     }
 
@@ -211,7 +214,7 @@ export function TradeForm({
       strategy: form.strategy || "Manual entry",
       setupQuality: form.setupQuality,
       emotion: form.emotion,
-      ruleFollowed: form.ruleFollowed === "Yes",
+      ruleFollowed: form.ruleFollowed === "Unknown" ? null : form.ruleFollowed === "Yes",
       notes: form.notes,
       screenshotUrl: initialTrade?.screenshotUrl ?? "",
       screenshotPath: initialTrade?.screenshotPath ?? "",
@@ -241,6 +244,13 @@ export function TradeForm({
 
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <PaywallModal
+        description="Screenshot upload is a Pro feature. Upgrade to attach chart screenshots to your trades."
+        lockedFeature="Screenshot upload"
+        open={screenshotPaywallOpen}
+        onClose={() => setScreenshotPaywallOpen(false)}
+      />
+
       {showSuccess ? (
         <div className="fixed right-5 top-24 z-40 flex items-center gap-3 rounded-2xl border border-profit/20 bg-profit px-4 py-3 text-sm font-semibold text-white shadow-premium">
           <CheckCircle2 className="h-5 w-5" />
@@ -252,30 +262,13 @@ export function TradeForm({
         onSubmit={saveTrade}
         className="rounded-[2rem] border border-white/[0.55] bg-white/[0.76] p-5 shadow-premium backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6"
       >
-        <div className="flex flex-col justify-between gap-4 border-b border-line/60 pb-6 md:flex-row md:items-start">
+        <div className="border-b border-line/60 pb-6">
           <div>
             <p className="text-sm font-medium text-muted">{mode === "edit" ? "Edit Trade" : "Add Trade"}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal text-ink">{mode === "edit" ? "Update journal entry" : "New journal entry"}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
               Capture execution, risk, psychology, and rule discipline before the details get fuzzy.
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href={cancelHref}
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-semibold text-ink transition hover:bg-surface"
-            >
-              <X className="h-4 w-4" />
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-zinc-950"
-            >
-              <Save className="h-4 w-4" />
-              {isSaving ? "Saving..." : submitLabel}
-            </button>
           </div>
         </div>
 
@@ -355,12 +348,12 @@ export function TradeForm({
           </Field>
           <Field label="Emotion before trade">
             <select className={selectStyles} value={form.emotion} onChange={(event) => update("emotion", event.target.value as Trade["emotion"])}>
-              {["Calm", "Fear", "Greed", "Revenge", "FOMO", "Confident"].map((item) => <option key={item}>{item}</option>)}
+              {["Calm", "Fear", "Greed", "Revenge", "FOMO", "Anxious", "Confident"].map((item) => <option key={item}>{item}</option>)}
             </select>
           </Field>
           <Field label="Rule followed?">
             <div className="grid grid-cols-2 gap-2">
-              {["Yes", "No"].map((item) => (
+                {["Yes", "No", "Unknown"].map((item) => (
                 <button
                   key={item}
                   className={`h-12 rounded-2xl border text-sm font-semibold transition ${
@@ -371,7 +364,7 @@ export function TradeForm({
                       : "border-line/70 bg-surface/60 text-muted"
                   }`}
                   type="button"
-                  onClick={() => update("ruleFollowed", item as "Yes" | "No")}
+                  onClick={() => update("ruleFollowed", item as "Yes" | "No" | "Unknown")}
                 >
                   {item}
                 </button>
@@ -392,7 +385,14 @@ export function TradeForm({
           <div className="rounded-[1.5rem] border border-dashed border-line bg-surface/50 p-5">
             <div className="flex h-full min-h-36 flex-col items-center justify-center text-center">
               {screenshotPreview ? (
-                <img alt="Trade screenshot preview" className="h-40 w-full rounded-[1.25rem] object-cover shadow-soft" src={screenshotPreview} />
+                <Image
+                  alt="Trade screenshot preview"
+                  className="h-40 w-full rounded-[1.25rem] object-cover shadow-soft"
+                  height={360}
+                  src={screenshotPreview}
+                  unoptimized
+                  width={640}
+                />
               ) : (
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
                   <Camera className="h-5 w-5" />
@@ -400,19 +400,23 @@ export function TradeForm({
               )}
               <p className="mt-3 text-sm font-semibold text-ink">{screenshotFile ? screenshotFile.name : screenshotPreview ? "Screenshot attached" : "Upload chart screenshot"}</p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                {isProUser ? "PNG, JPG, JPEG, or WEBP. Max 5MB." : "Screenshot upload is locked on Free."}
+                PNG, JPG, JPEG, or WEBP. Max 5MB.
               </p>
-              <label className={`mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-semibold text-ink transition ${isProUser ? "cursor-pointer hover:bg-surface" : "cursor-not-allowed opacity-60"}`}>
-                {!isProUser ? <Lock className="h-4 w-4" /> : null}
-                {isProUser ? "Choose image" : "Pro upload"}
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  disabled={!isProUser}
-                  onChange={(event) => selectScreenshot(event.target.files?.[0] ?? null)}
-                />
-              </label>
+              {isProUser ? (
+                <label className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-semibold text-ink transition hover:bg-surface">
+                  Choose image
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={(event) => selectScreenshot(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+              ) : (
+                <button className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-4 text-sm font-semibold text-ink transition hover:bg-surface" type="button" onClick={() => setScreenshotPaywallOpen(true)}>
+                  Choose image
+                </button>
+              )}
               {screenshotFile || screenshotPreview ? (
                 <button className="mt-2 text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline" type="button" onClick={() => selectScreenshot(null)}>
                   Clear selected screenshot
@@ -420,6 +424,24 @@ export function TradeForm({
               ) : null}
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-line/60 pt-5 sm:flex-row sm:items-center sm:justify-end">
+          <Link
+            href={cancelHref}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-line/70 bg-surface/70 px-5 text-sm font-semibold text-ink transition hover:bg-surface"
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-6 text-sm font-semibold text-white shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-zinc-950"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : submitLabel}
+          </button>
         </div>
       </form>
 

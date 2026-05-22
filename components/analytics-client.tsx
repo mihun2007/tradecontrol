@@ -18,7 +18,6 @@ import {
   TrendingUp,
   WalletCards
 } from "lucide-react";
-import { LockedFeature } from "@/components/locked-feature";
 import { PaywallModal } from "@/components/paywall-modal";
 import { useSubscription } from "@/components/subscription-provider";
 import { useUserTrades } from "@/hooks/use-user-trades";
@@ -272,6 +271,7 @@ export function AnalyticsClient() {
   const sessionRows = useMemo(() => groupBySession(filteredTrades), [filteredTrades]);
   const strategyPerformanceRows = useMemo(() => groupByStrategy(filteredTrades), [filteredTrades]);
   const emotionRows = useMemo(() => groupByEmotion(filteredTrades), [filteredTrades]);
+  const performanceHeatmap = useMemo(() => buildPerformanceHeatmap(filteredTrades), [filteredTrades]);
 
   return (
     <>
@@ -357,40 +357,56 @@ export function AnalyticsClient() {
         </div>
       </section>
 
-      <LockedAnalyticsSection isLocked={!isProUser} onUpgrade={() => setPaywallOpen(true)}>
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
-          <EquityCurve data={equityData} />
-          <InstrumentChart rows={instrumentRows} />
-        </section>
+      <PerformanceHeatmap data={performanceHeatmap} />
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          <SessionPerformance rows={sessionRows} />
-          <StrategyPerformance rows={strategyPerformanceRows.length ? strategyPerformanceRows : strategyRows} />
-        </section>
+      {isProUser ? (
+        <section className="grid gap-5">
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
+            <EquityCurve data={equityData} />
+            <InstrumentChart rows={instrumentRows} />
+          </section>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-          <MistakeAnalysis mistakes={mistakes} />
-          <EmotionPerformance rows={emotionRows} />
-        </section>
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <SessionPerformance rows={sessionRows} />
+            <StrategyPerformance rows={strategyPerformanceRows.length ? strategyPerformanceRows : strategyRows} />
+          </section>
 
-        <InsightsBox />
-      </LockedAnalyticsSection>
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+            <MistakeAnalysis mistakes={mistakes} />
+            <EmotionPerformance rows={emotionRows} />
+          </section>
+
+          <InsightsBox />
+        </section>
+      ) : (
+        <AnalyticsUpgradeBanner onUpgrade={() => setPaywallOpen(true)} />
+      )}
     </>
   );
 }
 
-function LockedAnalyticsSection({ children, isLocked, onUpgrade }: { children: React.ReactNode; isLocked: boolean; onUpgrade: () => void }) {
+function AnalyticsUpgradeBanner({ onUpgrade }: { onUpgrade: () => void }) {
   return (
-    <div className="relative grid gap-5">
-      <div className={isLocked ? "pointer-events-none select-none blur-[3px]" : ""}>{children}</div>
-      {isLocked ? (
-        <LockedFeature
-          description="Free users can view core metrics. Pro unlocks charts, strategy performance, mistake analysis, emotion performance, and AI-style insights."
-          title="Advanced analytics are Pro"
-          onUpgrade={onUpgrade}
-        />
-      ) : null}
-    </div>
+    <section className="rounded-[2rem] border border-white/[0.55] bg-zinc-950 p-5 text-white shadow-premium dark:border-white/10 dark:bg-white/[0.06] sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-zinc-950 shadow-premium">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white/[0.55]">Premium analytics</p>
+            <h3 className="mt-1 text-xl font-semibold leading-tight">Unlock advanced analytics</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
+              Pro unlocks equity curves, strategy performance, session breakdowns, mistake analysis, emotion analytics, and AI-style insights.
+            </p>
+          </div>
+        </div>
+        <button className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5" type="button" onClick={onUpgrade}>
+          <Sparkles className="h-4 w-4" />
+          Upgrade
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -413,6 +429,115 @@ function MetricCard({
       </div>
       <p className={`mt-3 text-3xl font-semibold tracking-normal ${toneClass(tone)}`}>{value}</p>
     </article>
+  );
+}
+
+type HeatmapDay = {
+  averageProfitLoss: number;
+  day: string;
+  profitLoss: number;
+  trades: number;
+};
+
+type HeatmapSession = {
+  profitLoss: number;
+  session: string;
+  trades: number;
+  winRate: number;
+};
+
+type PerformanceHeatmapData = {
+  dayInsight: string;
+  days: HeatmapDay[];
+  sessionInsight: string;
+  sessions: HeatmapSession[];
+};
+
+function PerformanceHeatmap({ data }: { data: PerformanceHeatmapData }) {
+  const maxDayAbs = Math.max(1, ...data.days.map((day) => Math.abs(day.profitLoss)));
+  const maxSessionAbs = Math.max(1, ...data.sessions.map((session) => Math.abs(session.profitLoss)));
+
+  return (
+    <section className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
+      <div className="mb-5">
+        <p className="text-sm font-medium text-muted">Performance Heatmap</p>
+        <h2 className="mt-1 text-xl font-semibold text-ink">Where your edge shows up</h2>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <HeatmapPanel title="Best Days">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-3">
+            {data.days.map((day) => (
+              <HeatmapCell key={day.day} intensityBase={maxDayAbs} label={day.day} profitLoss={day.profitLoss}>
+                <p className="mt-3 break-words text-[1.05rem] font-semibold leading-tight tracking-normal tabular-nums">{formatCurrency(day.profitLoss)}</p>
+                <p className="mt-1 text-xs font-medium opacity-75">{day.trades} {day.trades === 1 ? "trade" : "trades"}</p>
+              </HeatmapCell>
+            ))}
+          </div>
+        </HeatmapPanel>
+
+        <HeatmapPanel title="Best Sessions">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
+            {data.sessions.map((session) => (
+              <HeatmapCell key={session.session} intensityBase={maxSessionAbs} label={session.session} profitLoss={session.profitLoss}>
+                <p className="mt-3 break-words text-[1.05rem] font-semibold leading-tight tracking-normal tabular-nums">{formatCurrency(session.profitLoss)}</p>
+                <p className="mt-1 text-xs font-medium opacity-75">{session.winRate}% win rate · {session.trades} {session.trades === 1 ? "trade" : "trades"}</p>
+              </HeatmapCell>
+            ))}
+          </div>
+        </HeatmapPanel>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {[data.dayInsight, data.sessionInsight].map((insight) => (
+          <div key={insight} className="rounded-[1.5rem] border border-line/60 bg-surface/[0.55] p-4">
+            <div className="flex gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-profit" />
+              <p className="text-sm leading-6 text-muted">{insight}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HeatmapPanel({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <article className="rounded-[1.5rem] border border-line/60 bg-surface/[0.45] p-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-base font-semibold text-ink">{title}</h3>
+        <div className="flex w-fit items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
+          <span className="h-2.5 w-2.5 rounded-full bg-loss" />
+          <span>Loss</span>
+          <span className="mx-1 h-px w-5 bg-line" />
+          <span>Profit</span>
+          <span className="h-2.5 w-2.5 rounded-full bg-profit" />
+        </div>
+      </div>
+      {children}
+    </article>
+  );
+}
+
+function HeatmapCell({
+  children,
+  intensityBase,
+  label,
+  profitLoss
+}: {
+  children: ReactNode;
+  intensityBase: number;
+  label: string;
+  profitLoss: number;
+}) {
+  const colorStyle = heatmapColorStyle(profitLoss, intensityBase);
+
+  return (
+    <div className="min-h-[7.75rem] min-w-0 rounded-[1.25rem] border p-4 text-ink shadow-soft" style={colorStyle}>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] opacity-70">{label}</p>
+      {children}
+    </div>
   );
 }
 
@@ -702,7 +827,7 @@ function groupByStrategy(trades: Trade[]): StrategyPerformance[] {
 }
 
 function groupByEmotion(trades: Trade[]) {
-  return ["Calm", "Fear", "Greed", "FOMO", "Revenge", "Confident"].map((emotion) => {
+  return ["Calm", "Fear", "Greed", "FOMO", "Revenge", "Anxious", "Confident"].map((emotion) => {
     const rows = trades.filter((trade) => trade.emotion === emotion);
     const profitLoss = rows.reduce((sum, trade) => sum + trade.profitLoss, 0);
     const wins = rows.filter((trade) => trade.profitLoss > 0).length;
@@ -714,6 +839,101 @@ function groupByEmotion(trades: Trade[]) {
       winRate: rows.length ? Math.round((wins / rows.length) * 100) : 0
     };
   });
+}
+
+function buildPerformanceHeatmap(trades: Trade[]): PerformanceHeatmapData {
+  const dayOrder = [
+    { index: 1, label: "Mon", name: "Monday" },
+    { index: 2, label: "Tue", name: "Tuesday" },
+    { index: 3, label: "Wed", name: "Wednesday" },
+    { index: 4, label: "Thu", name: "Thursday" },
+    { index: 5, label: "Fri", name: "Friday" },
+    { index: 6, label: "Sat", name: "Saturday" },
+    { index: 0, label: "Sun", name: "Sunday" }
+  ];
+
+  const days = dayOrder.map((day) => {
+    const rows = trades.filter((trade) => getTradeWeekday(trade.date) === day.index);
+    const profitLoss = rows.reduce((sum, trade) => sum + trade.profitLoss, 0);
+    return {
+      averageProfitLoss: rows.length ? profitLoss / rows.length : 0,
+      day: day.label,
+      profitLoss,
+      trades: rows.length
+    };
+  });
+
+  const sessions = Array.from(new Set(trades.map((trade) => trade.session || "Unknown")))
+    .sort((first, second) => sessionSortOrder(first) - sessionSortOrder(second) || first.localeCompare(second))
+    .map((session) => {
+      const rows = trades.filter((trade) => (trade.session || "Unknown") === session);
+      const closedRows = rows.filter((trade) => trade.result !== "Open");
+      const wins = closedRows.filter((trade) => trade.profitLoss > 0).length;
+
+      return {
+        profitLoss: rows.reduce((sum, trade) => sum + trade.profitLoss, 0),
+        session,
+        trades: rows.length,
+        winRate: closedRows.length ? Math.round((wins / closedRows.length) * 100) : 0
+      };
+    });
+
+  const bestDay = days.reduce((winner, day) => (
+    day.trades && day.averageProfitLoss > winner.averageProfitLoss ? day : winner
+  ), { averageProfitLoss: Number.NEGATIVE_INFINITY, day: "", profitLoss: 0, trades: 0 });
+  const bestDayName = dayOrder.find((day) => day.label === bestDay.day)?.name ?? bestDay.day;
+  const bestSession = sessions.reduce((winner, session) => (
+    session.trades && session.winRate > winner.winRate ? session : winner
+  ), { profitLoss: 0, session: "", trades: 0, winRate: -1 });
+
+  return {
+    dayInsight: bestDay.trades
+      ? `Your best day is ${bestDayName} with ${formatCurrency(bestDay.averageProfitLoss)} avg P&L.`
+      : "Add trades to reveal your best trading day.",
+    days,
+    sessionInsight: bestSession.trades
+      ? `${bestSession.session} session has your highest win rate at ${bestSession.winRate}%.`
+      : "Add trades to reveal your strongest trading session.",
+    sessions: sessions.length ? sessions : [{ profitLoss: 0, session: "No sessions yet", trades: 0, winRate: 0 }]
+  };
+}
+
+function getTradeWeekday(date: string) {
+  const parsed = new Date(`${date}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? -1 : parsed.getDay();
+}
+
+function sessionSortOrder(session: string) {
+  const order: Record<string, number> = {
+    Asia: 1,
+    Asian: 1,
+    London: 2,
+    "New York": 3
+  };
+
+  return order[session] ?? 99;
+}
+
+function heatmapColorStyle(value: number, maxAbs: number) {
+  if (value === 0) {
+    return {
+      backgroundColor: "rgba(113, 113, 122, 0.1)",
+      borderColor: "rgba(113, 113, 122, 0.26)"
+    };
+  }
+
+  const intensity = Math.min(1, Math.abs(value) / maxAbs);
+  const alpha = 0.16 + intensity * 0.34;
+
+  return value > 0
+    ? {
+        backgroundColor: `rgba(23, 162, 105, ${alpha})`,
+        borderColor: `rgba(23, 162, 105, ${0.32 + intensity * 0.42})`
+      }
+    : {
+        backgroundColor: `rgba(239, 68, 68, ${alpha})`,
+        borderColor: `rgba(239, 68, 68, ${0.32 + intensity * 0.42})`
+      };
 }
 
 function calculateMaxDrawdown(equity: number[]) {
