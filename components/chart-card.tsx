@@ -1,4 +1,7 @@
+"use client";
+
 import { Activity, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState, type PointerEvent } from "react";
 import { buildDailyProfitBuckets, buildEquityCurve, buildLinePoints } from "@/lib/equity";
 import { formatCurrency, type Trade } from "@/lib/trades";
 
@@ -24,6 +27,31 @@ export function ChartCard({ currency = "USD", loading = false, trades = [] }: Ch
   const isPositive = curve.netProfit >= 0;
   const hasTrades = curve.points.length > 0;
   const TrendIcon = curve.netProfit > 0 ? TrendingUp : curve.netProfit < 0 ? TrendingDown : Minus;
+  const tradesById = useMemo(() => new Map(trades.map((trade) => [trade.id, trade])), [trades]);
+  const [hoveredPoint, setHoveredPoint] = useState<{ index: number; x: number; y: number } | null>(null);
+  const tooltip = hoveredPoint ? buildTooltipData(hoveredPoint.index, curve, tradesById, currency) : null;
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!chartCoordinates.length) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pointerXPercent = ((event.clientX - rect.left) / rect.width) * 100;
+    const nearestIndex = chartCoordinates.reduce((bestIndex, coordinate, index) => {
+      const bestDistance = Math.abs(chartCoordinates[bestIndex].x - pointerXPercent);
+      const nextDistance = Math.abs(coordinate.x - pointerXPercent);
+      return nextDistance < bestDistance ? index : bestIndex;
+    }, 0);
+    const nextX = event.clientX - rect.left;
+    const nextY = event.clientY - rect.top;
+
+    setHoveredPoint({
+      index: nearestIndex,
+      x: Math.max(0, Math.min(rect.width, nextX)),
+      y: Math.max(0, Math.min(rect.height, nextY))
+    });
+  }
 
   return (
     <article className="rounded-[2rem] border border-white/[0.55] bg-white/[0.72] p-5 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.055] sm:p-6">
@@ -42,7 +70,11 @@ export function ChartCard({ currency = "USD", loading = false, trades = [] }: Ch
         {loading ? (
           <div className="h-full animate-pulse rounded-[1rem] bg-line/30" />
         ) : hasTrades ? (
-          <div className="relative h-full w-full overflow-hidden rounded-[1rem]">
+          <div
+            className="relative h-full w-full overflow-hidden rounded-[1rem]"
+            onPointerMove={handlePointerMove}
+            onPointerLeave={() => setHoveredPoint(null)}
+          >
             <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Equity curve from ${curve.points.length} trades`}>
               <defs>
                 <linearGradient id="equityLine" x1="0" x2="1" y1="0" y2="0">
@@ -61,6 +93,21 @@ export function ChartCard({ currency = "USD", loading = false, trades = [] }: Ch
               <polyline fill="none" points={linePoints} stroke="rgba(23,162,105,0.18)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
               <polyline fill="none" points={linePoints} stroke="url(#equityLine)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
             </svg>
+            {hoveredPoint && chartCoordinates[hoveredPoint.index] ? (
+              <>
+                <span
+                  className="pointer-events-none absolute inset-y-0 w-px bg-profit/35"
+                  style={{ left: `${chartCoordinates[hoveredPoint.index].x}%` }}
+                />
+                <span
+                  className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-profit shadow-[0_0_0_6px_rgba(34,197,94,0.16)] dark:border-zinc-950"
+                  style={{
+                    left: `${chartCoordinates[hoveredPoint.index].x}%`,
+                    top: `${chartCoordinates[hoveredPoint.index].y}%`
+                  }}
+                />
+              </>
+            ) : null}
             {values.length <= 25
               ? values.map((value, index) => {
                   const coordinate = chartCoordinates[index];
@@ -75,6 +122,34 @@ export function ChartCard({ currency = "USD", loading = false, trades = [] }: Ch
                   );
                 })
               : null}
+            {hoveredPoint && tooltip ? (
+              <div
+                className="pointer-events-none absolute z-20 w-64 rounded-2xl border border-line/70 bg-white/95 p-3 text-ink shadow-premium backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/95"
+                style={{
+                  left: hoveredPoint.x,
+                  top: hoveredPoint.y,
+                  transform: `translate(${hoveredPoint.x > 240 ? "calc(-100% - 14px)" : "14px"}, ${hoveredPoint.y > 150 ? "calc(-100% - 14px)" : "14px"})`
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted">{tooltip.dateLabel}</p>
+                    <p className="mt-1 text-sm font-semibold text-ink">{tooltip.title}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-1 text-xs font-bold ${tooltip.profitLoss >= 0 ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"}`}>
+                    {formatCurrency(tooltip.profitLoss, currency)}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  {tooltip.rows.map((row) => (
+                    <div key={row.label} className="rounded-xl border border-line/50 bg-surface/60 px-2.5 py-2">
+                      <p className="font-semibold text-muted">{row.label}</p>
+                      <p className="mt-1 truncate font-bold text-ink">{row.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-center">
@@ -102,4 +177,48 @@ export function ChartCard({ currency = "USD", loading = false, trades = [] }: Ch
       </div>
     </article>
   );
+}
+
+function buildTooltipData(index: number, curve: ReturnType<typeof buildEquityCurve>, tradesById: Map<string, Trade>, currency: string) {
+  if (index === 0) {
+    return {
+      dateLabel: "Starting point",
+      title: "Initial balance",
+      profitLoss: 0,
+      rows: [
+        { label: "Balance", value: formatCurrency(curve.startingBalance, currency) },
+        { label: "Trades", value: "0" },
+        { label: "Net P/L", value: formatCurrency(0, currency) },
+        { label: "Status", value: "Before first trade" }
+      ]
+    };
+  }
+
+  const point = curve.points[index - 1];
+  const trade = point ? tradesById.get(point.tradeId) : undefined;
+  const dateLabel = formatTradeDate(point?.date);
+
+  return {
+    dateLabel,
+    title: trade ? `${trade.instrument} · ${trade.tradeType} · ${trade.result}` : "Trade update",
+    profitLoss: point?.profitLoss ?? 0,
+    rows: [
+      { label: "Balance", value: formatCurrency(point?.balance ?? curve.startingBalance, currency) },
+      { label: "Session", value: trade?.session ?? "N/A" },
+      { label: "Strategy", value: trade?.strategy || "N/A" },
+      { label: "RR", value: trade?.rr ? `${trade.rr}:1` : "N/A" }
+    ]
+  };
+}
+
+function formatTradeDate(date?: string) {
+  if (!date) {
+    return "Unknown date";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }).format(new Date(`${date}T00:00:00`));
 }

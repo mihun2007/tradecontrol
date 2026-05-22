@@ -10,6 +10,88 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.uid == "LHUcXRtau5hPYXRdRY5w5hopsP52";
+    }
+
+    function feedbackCreateFields() {
+      return [
+        "id",
+        "userId",
+        "userEmail",
+        "type",
+        "rating",
+        "message",
+        "page",
+        "status",
+        "createdAt"
+      ];
+    }
+
+    function feedbackUpdateFields() {
+      return [
+        "status",
+        "adminNote"
+      ];
+    }
+
+    function isValidFeedbackType(feedbackType) {
+      return feedbackType in ["bug", "feature_request", "general", "complaint", "praise"];
+    }
+
+    function isValidFeedbackStatus(feedbackStatus) {
+      return feedbackStatus in ["new", "reviewed", "in_progress", "done"];
+    }
+
+    function hasValidFeedbackCreateData(feedbackId) {
+      return request.resource.data.keys().hasOnly(feedbackCreateFields())
+        && request.resource.data.keys().hasAll([
+          "id",
+          "userId",
+          "userEmail",
+          "type",
+          "message",
+          "page",
+          "status",
+          "createdAt"
+        ])
+        && request.resource.data.id == feedbackId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail is string
+        && request.resource.data.userEmail.size() > 0
+        && isValidFeedbackType(request.resource.data.type)
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 1000
+        && request.resource.data.page is string
+        && request.resource.data.page.size() > 0
+        && request.resource.data.status == "new"
+        && request.resource.data.createdAt is timestamp
+        && (
+          !request.resource.data.keys().hasAny(["rating"])
+          || (
+            request.resource.data.rating is number
+            && request.resource.data.rating >= 1
+            && request.resource.data.rating <= 5
+          )
+        );
+    }
+
+    function hasValidFeedbackUpdateData() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(feedbackUpdateFields())
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["status"])
+          || isValidFeedbackStatus(request.resource.data.status)
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(["adminNote"])
+          || (
+            request.resource.data.adminNote is string
+            && request.resource.data.adminNote.size() <= 1000
+          )
+        );
+    }
+
     function subscriptionFields() {
       return [
         "currentPeriodEnd",
@@ -45,6 +127,11 @@ service cloud.firestore {
 
       match /dailyReviews/{reviewId} {
         allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /stats/{statsId} {
+        allow read, create, update: if isOwner(userId);
+        allow delete: if false;
       }
 
       match /aiUsage/{usageDate} {
@@ -84,6 +171,13 @@ service cloud.firestore {
         && resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"])
         && request.resource.data.read == true;
+      allow delete: if false;
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if signedIn() && hasValidFeedbackCreateData(feedbackId);
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() && hasValidFeedbackUpdateData();
       allow delete: if false;
     }
 

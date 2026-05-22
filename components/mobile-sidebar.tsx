@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { LineChart, X } from "lucide-react";
+import { LineChart, MessageSquareText, X } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 import { useLanguage } from "@/components/language-provider";
 import { navItems } from "@/components/sidebar";
 
@@ -15,7 +16,19 @@ export function MobileSidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { currentUser } = useAuth();
   const { t } = useLanguage();
+  const isAdmin = Boolean(process.env.NEXT_PUBLIC_ADMIN_UID && currentUser?.uid === process.env.NEXT_PUBLIC_ADMIN_UID);
+  const visibleNavItems = isAdmin
+    ? [
+        ...navItems,
+        {
+          label: "Feedback",
+          icon: MessageSquareText,
+          href: "/admin/feedback"
+        }
+      ]
+    : navItems;
 
   useEffect(() => {
     onClose();
@@ -76,7 +89,7 @@ export function MobileSidebar({
         </div>
 
         <nav className="mt-8 grid gap-1 overflow-y-auto pb-4">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname.startsWith(item.href);
 
@@ -91,7 +104,7 @@ export function MobileSidebar({
                 href={item.href}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {t(item.labelKey)}
+                {"labelKey" in item ? t(item.labelKey) : item.label}
               </Link>
             );
           })}

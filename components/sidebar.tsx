@@ -11,11 +11,13 @@ import {
   FileText,
   LayoutDashboard,
   LineChart,
+  MessageSquareText,
   Settings,
   ShieldCheck,
   WalletCards
 } from "lucide-react";
 import { useMemo } from "react";
+import { useAuth } from "@/components/auth-provider";
 import { useLanguage } from "@/components/language-provider";
 import { useUserProfile } from "@/components/user-profile-provider";
 import { useUserTrades } from "@/hooks/use-user-trades";
@@ -34,8 +36,15 @@ export const navItems = [
   { label: "Settings", labelKey: "nav.settings", icon: Settings, href: "/settings" }
 ] as const;
 
+const adminNavItem = {
+  label: "Feedback",
+  icon: MessageSquareText,
+  href: "/admin/feedback"
+} as const;
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { currentUser } = useAuth();
   const { t } = useLanguage();
   const { profile, loading: profileLoading } = useUserProfile();
   const { trades, loading: tradesLoading } = useUserTrades();
@@ -49,6 +58,8 @@ export function Sidebar() {
   const progress = calculateRiskProgress(riskStatus, settings);
   const statusMessage = getRiskStatusMessage(riskStatus);
   const tone = riskTone(riskStatus.level);
+  const isAdmin = Boolean(process.env.NEXT_PUBLIC_ADMIN_UID && currentUser?.uid === process.env.NEXT_PUBLIC_ADMIN_UID);
+  const visibleNavItems = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   return (
     <aside className="hidden w-[286px] shrink-0 border-r border-white/[0.55] bg-white/[0.55] px-5 py-6 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-950/[0.58] lg:flex lg:flex-col">
@@ -63,7 +74,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-9 flex flex-1 flex-col gap-1">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
           return (
@@ -77,7 +88,7 @@ export function Sidebar() {
               href={item.href}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span>{t(item.labelKey)}</span>
+              <span>{"labelKey" in item ? t(item.labelKey) : item.label}</span>
             </Link>
           );
         })}

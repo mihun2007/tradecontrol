@@ -11,6 +11,7 @@ import {
   Download,
   FileText,
   Globe2,
+  MessageCircle,
   Moon,
   Save,
   Settings,
@@ -23,12 +24,14 @@ import {
   WalletCards,
   X
 } from "lucide-react";
+import { FeedbackForm } from "@/components/feedback-form";
 import { useAuth } from "@/components/auth-provider";
 import { useLanguage } from "@/components/language-provider";
 import { useSubscription } from "@/components/subscription-provider";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { useUserTrades } from "@/hooks/use-user-trades";
 import { trackApiFailure, trackEvent } from "@/lib/analytics";
+import { getUserFeedbackSubmissions, type Feedback, type FeedbackStatus, type FeedbackType } from "@/lib/feedback";
 import { defaultLanguage, languageOptions, type AppLanguage } from "@/lib/languages";
 import { riskSettingsStorageKey } from "@/lib/risk";
 import { createUserProfile, updateUserProfile, type UserProfile, type UserProfileInput } from "@/lib/user-profile";
@@ -228,7 +231,7 @@ export function SettingsClient() {
       trade.result,
       String(trade.profitLoss),
       trade.strategy,
-      trade.ruleFollowed ? "Yes" : "No",
+      formatRuleFollowed(trade.ruleFollowed),
       trade.notes
     ]);
     const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
@@ -289,7 +292,7 @@ export function SettingsClient() {
   }
 
   return (
-    <form className="contents" onSubmit={saveSettings}>
+    <div className="contents">
       {notice ? (
         <div className="fixed right-4 top-4 z-50 flex items-center gap-3 rounded-2xl border border-profit/20 bg-zinc-950 px-4 py-3 text-sm font-semibold text-white shadow-premium dark:bg-white dark:text-zinc-950">
           <CheckCircle2 className="h-4 w-4 text-profit" />
@@ -321,7 +324,7 @@ export function SettingsClient() {
             </p>
           ) : null}
         </div>
-        <button className="inline-flex h-11 w-fit items-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving || loading} type="submit">
+        <button className="inline-flex h-11 w-fit items-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving || loading} type="button" onClick={() => void saveSettings()}>
           <Save className="h-4 w-4" />
           {isSaving ? "Saving..." : "Save Settings"}
         </button>
@@ -339,7 +342,7 @@ export function SettingsClient() {
             <p className="text-sm leading-6 text-muted">
               {isProUser
                 ? "Unlimited trades, full AI Coach, advanced analytics, screenshots, and full calendar insights are unlocked."
-                : "Free includes 5 trades per day, 50 trades total, limited analytics, no screenshots, and 3 AI Coach messages per day."}
+                : "Free includes 5 trades per day, 50 trades total, limited analytics, no screenshots, and 10 AI Coach messages per day."}
             </p>
             <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Stripe status: {subscriptionStatus}</p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -542,13 +545,152 @@ export function SettingsClient() {
           <p className="text-sm font-medium text-white/[0.55]">Save Settings</p>
           <h2 className="mt-1 text-xl font-semibold">Apply profile, rules, defaults, and appearance to Firestore.</h2>
         </div>
-        <button className="inline-flex h-12 w-fit items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving || loading} type="submit">
+        <button className="inline-flex h-12 w-fit items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-zinc-950 shadow-premium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSaving || loading} type="button" onClick={() => void saveSettings()}>
           <Save className="h-4 w-4" />
           {isSaving ? "Saving..." : "Save Settings"}
         </button>
       </section>
-    </form>
+
+      <FeedbackSettingsSection />
+    </div>
   );
+}
+
+function FeedbackSettingsSection() {
+  const { currentUser } = useAuth();
+  const [feedbackItems, setFeedbackItems] = useState<Feedback[]>([]);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+
+  useEffect(() => {
+    void loadFeedbackItems();
+  }, [currentUser?.uid]);
+
+  async function loadFeedbackItems() {
+    if (!currentUser?.uid) {
+      setFeedbackItems([]);
+      return;
+    }
+
+    setLoadingFeedback(true);
+    try {
+      const submissions = await getUserFeedbackSubmissions(currentUser.uid);
+      setFeedbackItems(submissions);
+    } catch (feedbackError) {
+      trackApiFailure("feedback_settings_list", feedbackError);
+    } finally {
+      setLoadingFeedback(false);
+    }
+  }
+
+  return (
+    <Card eyebrow="Feedback & Suggestions" title="Tell us what to improve" icon={MessageCircle}>
+      <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
+        Tell us what you love, what's broken, or what you wish TradeControl could do.
+      </p>
+
+      <FeedbackForm onSuccess={() => void loadFeedbackItems()} />
+
+      <p className="mt-4 text-sm leading-6 text-muted">
+        Your feedback is private and goes directly to the TradeControl team.
+      </p>
+
+      <div className="mt-6 grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-ink">Recent feedback</h3>
+          {loadingFeedback ? <span className="text-xs font-semibold text-muted">Loading...</span> : null}
+        </div>
+
+        {feedbackItems.length ? (
+          <div className="grid gap-2">
+            {feedbackItems.map((item) => (
+              <div key={item.id} className="grid gap-3 rounded-[1.25rem] border border-line/60 bg-surface/[0.55] p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                <FeedbackTypeBadge type={item.type} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">{truncateFeedbackMessage(item.message)}</p>
+                  <p className="mt-1 text-xs font-semibold text-muted">{formatFeedbackDate(item.createdAt)}</p>
+                </div>
+                <FeedbackStatusBadge status={item.status} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.25rem] border border-line/60 bg-surface/[0.55] p-4 text-sm font-semibold text-muted">
+            No feedback submitted yet.
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function FeedbackTypeBadge({ type }: { type: FeedbackType }) {
+  const styles: Record<FeedbackType, string> = {
+    bug: "border-loss/20 bg-loss/10 text-loss",
+    feature_request: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-300",
+    general: "border-zinc-500/20 bg-zinc-500/10 text-muted",
+    complaint: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    praise: "border-profit/20 bg-profit/10 text-profit"
+  };
+
+  return (
+    <span className={`w-fit rounded-full border px-3 py-1 text-xs font-bold ${styles[type]}`}>
+      {feedbackTypeLabel(type)}
+    </span>
+  );
+}
+
+function FeedbackStatusBadge({ status }: { status: FeedbackStatus }) {
+  const styles: Record<FeedbackStatus, string> = {
+    new: "border-profit/20 bg-profit/10 text-profit",
+    reviewed: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-300",
+    in_progress: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    done: "border-zinc-500/20 bg-zinc-500/10 text-muted"
+  };
+
+  return (
+    <span className={`w-fit rounded-full border px-3 py-1 text-xs font-bold sm:justify-self-end ${styles[status]}`}>
+      {feedbackStatusLabel(status)}
+    </span>
+  );
+}
+
+function feedbackTypeLabel(type: FeedbackType) {
+  const labels: Record<FeedbackType, string> = {
+    bug: "Bug",
+    feature_request: "Feature Request",
+    general: "General",
+    complaint: "Complaint",
+    praise: "Praise"
+  };
+
+  return labels[type];
+}
+
+function feedbackStatusLabel(status: FeedbackStatus) {
+  const labels: Record<FeedbackStatus, string> = {
+    new: "New",
+    reviewed: "Reviewed",
+    in_progress: "In Progress",
+    done: "Done"
+  };
+
+  return labels[status];
+}
+
+function truncateFeedbackMessage(message: string) {
+  return message.length > 60 ? `${message.slice(0, 60)}...` : message;
+}
+
+function formatFeedbackDate(createdAt?: string) {
+  if (!createdAt) {
+    return "Just now";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }).format(new Date(createdAt));
 }
 
 function ConfirmClearModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
@@ -752,7 +894,7 @@ function buildJournalPrintHtml(displayName: string, trades: ReturnType<typeof us
         <td>${escapeHtml(trade.result)}</td>
         <td class="${trade.profitLoss >= 0 ? "profit" : "loss"}">${escapeHtml(String(trade.profitLoss))}</td>
         <td>${escapeHtml(`${trade.rr}:1`)}</td>
-        <td>${trade.ruleFollowed ? "Yes" : "No"}</td>
+        <td>${formatRuleFollowed(trade.ruleFollowed)}</td>
         <td>${escapeHtml(trade.strategy)}</td>
         <td>${escapeHtml(trade.notes || "")}</td>
       </tr>
@@ -825,4 +967,8 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function formatRuleFollowed(value: boolean | null) {
+  return value === true ? "Yes" : value === false ? "No" : "Unknown";
 }

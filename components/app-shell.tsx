@@ -9,6 +9,7 @@ import { MobileSidebar } from "./mobile-sidebar";
 import { useUserProfile } from "./user-profile-provider";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { FloatingFeedbackButton } from "@/components/floating-feedback-button";
 import { hasCompletedOnboardingForSession } from "@/lib/onboarding-state";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -83,6 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </section>
       </div>
+      <FloatingFeedbackButton />
     </main>
   );
 }
