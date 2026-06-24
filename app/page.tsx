@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/json-ld";
+import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
 import {
@@ -175,9 +176,9 @@ function PrimaryCta({ user, ready, children }: { user: User | null; ready: boole
 
 function DashboardPreview() {
   return (
-    <div className="relative mx-auto mt-12 max-w-6xl">
+    <div className="relative h-full w-full">
       <div className="absolute -inset-4 rounded-[2rem] bg-emerald-500/10 blur-3xl" />
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/40">
+      <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/40">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div className="flex gap-2">
             <span className="h-3 w-3 rounded-full bg-rose-400" />
@@ -189,7 +190,7 @@ function DashboardPreview() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[220px_1fr]">
+        <div className="grid h-[calc(100%-57px)] lg:grid-cols-[220px_1fr]">
           <aside className="hidden border-r border-white/10 bg-white/[0.03] p-5 lg:block">
             <div className="mb-8 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 text-slate-950">
@@ -212,7 +213,7 @@ function DashboardPreview() {
             ))}
           </aside>
 
-          <div className="p-4 sm:p-6">
+          <div className="overflow-hidden p-4 sm:p-6">
             <div className="mb-5 grid gap-3 sm:grid-cols-3">
               {[
                 ["Net P&L", "+$4,820", "after expenses"],
@@ -236,7 +237,7 @@ function DashboardPreview() {
                   </div>
                   <TrendingUp className="h-5 w-5 text-emerald-300" />
                 </div>
-                <div className="flex h-44 items-end gap-2">
+                <div className="flex h-36 items-end gap-2 md:h-44">
                   {[28, 34, 31, 45, 42, 56, 51, 64, 62, 73, 70, 82].map((height, index) => (
                     <div
                       key={index}
@@ -277,7 +278,7 @@ export default function LandingPage() {
   const { user, ready } = useAuthUser();
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen overflow-x-hidden bg-slate-950 text-white">
       <JsonLd data={softwareApplicationJsonLd} id="software-application-json-ld" />
       <JsonLd data={homepageFaqJsonLd} id="homepage-faq-json-ld" />
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
@@ -332,7 +333,12 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <DashboardPreview />
+          <div className="relative mt-8">
+            <div className="absolute inset-x-0 top-16 h-[420px] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.2),transparent_60%)] blur-2xl" />
+            <ContainerScroll titleComponent={<div className="h-8 md:h-12" aria-hidden="true" />}>
+              <DashboardPreview />
+            </ContainerScroll>
+          </div>
         </div>
       </section>
 
